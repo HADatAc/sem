@@ -1,0 +1,74 @@
+
+
+# Landing page
+
+sem.index:
+  path: 'sem'
+  defaults:
+    _controller: '\Drupal\sem\Controller\InitializationController::index'
+    _title: 'Semantic Variable'    
+  requirements:
+    _permission: 'access content'
+  #  _custom_access_check: 'TRUE'    
+  options:
+    no_cache: 'TRUE'
+    
+# Main menu options
+
+sem.list_element:
+  path: 'sem/list/{elementtype}/{keyword}/{page}/{pagesize}'
+  defaults:
+    _form: '\Drupal\sem\Form\ListForm'
+  requirements:
+    _permission: 'access content'
+    _custom_access_check: 'TRUE'    
+  options:
+    no_cache: 'TRUE'
+
+sem.select_element:
+  path: 'sem/select/{elementtype}/{page}/{pagesize}'
+  defaults:
+    _form: '\Drupal\sem\Form\SelectForm'
+  requirements:
+    _permission: 'access content'
+    _custom_access_check: 'TRUE'    
+  options:
+    no_cache: 'TRUE'
+
+# Semantic Variable CRUD options
+
+sem.add_semantic_variable:
+  path: 'sem/manage/addsemanticvariable'
+  defaults:
+    _form: '\Drupal\sem\Form\AddSemanticVariableForm'
+    _title: 'Add SemanticVariable'    
+  requirements:
+    _permission: 'access content'
+    _custom_access_check: 'TRUE'    
+  options:
+    no_cache: 'TRUE'
+
+sem.edit_semantic_variable:
+  path: 'sem/manage/editsemanticvariable/{semanticvariableuri}'
+  defaults:
+    _form: '\Drupal\sem\Form\EditSemanticVariableForm'
+    _title: 'Edit Semantic Variable'    
+  requirements:
+    _permission: 'access content'  
+    _custom_access_check: 'TRUE'      
+  options:
+    no_cache: 'TRUE'
+
+# Configuration option
+
+#sem.admin_settings_custom:
+#  path: 'admin/config/sem'
+#  defaults:
+#    _form: '\Drupal\sem\Form\SVarSettingsForm'
+#    _title: 'Semantic Variable Settings Form'
+#  requirements:
+#    _permission: 'administer site configuration'
+#  options:
+#    _admin_route: TRUE
+#    no_cache: 'TRUE'
+

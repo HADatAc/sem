@@ -1,0 +1,6 @@
+name: Semantic Variables
+description: GUI for managing semantic variables on a back-end HASCO API
+package: Semantic Tools
+core_version_requirement: ^8 || ^9
+type: module 
+configure: sem.admin_settings

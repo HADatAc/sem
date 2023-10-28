@@ -1,0 +1,26 @@
+uuid: 1e2d4aa7-75a5-4960-bc58-371350fbf614
+langcode: en
+status: true
+dependencies:
+  module:
+    - sem
+    - system
+  theme:
+    - bootstrap_barrio_subtheme
+id: searchsemanticscriteria
+theme: bootstrap_barrio_subtheme
+region: sidebar_first
+weight: 0
+provider: null
+plugin: sem_search_block
+settings:
+  id: sem_search_block
+  label: 'Search Semantics Criteria'
+  label_display: visible
+  provider: sem
+visibility:
+  request_path:
+    id: request_path
+    negate: false
+    pages: '/sem/list/*'
+    

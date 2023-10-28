@@ -1,0 +1,46 @@
+sem.top_level:
+  title: Variables
+  description: Manage Semantic Variables
+  route_name: sem.index
+  menu_name: main
+  weight: 90
+  requirements:
+    _permission: 'access content'
+    
+sem.search:
+  title: Search Semantic Elements
+  description: Search Semantic Elements
+  route_name: sem.index
+  parent: sem.top_level
+  menu_name: main
+  enabled: 1
+  weight: 1
+  requirements:
+   _permission: 'access content'
+   
+sem.manage_entities:
+  title: Manage Semantic Variables
+  description: Manage Semantic Variables
+  route_name: sem.select_element
+  route_parameters:
+    elementtype: 'semanticvariable'
+    page: '1'
+    pagesize: '10'
+  parent: sem.top_level
+  menu_name: main
+  weight: 2
+  requirements:
+    _permission: 'access content'
+    _role: 'authenticated'
+
+#sem.admin_settings_link:
+#  title: Semantic Variable Config
+#  description: Semantic Variable Settings
+#  menu_name: main 
+#  route_name: sem.admin_settings_custom
+#  parent: sem.admin_settings_link
+#  weight: 10
+#  requirements:
+#    _permission: 'access content'
+#    _role: 'authenticated'
+
