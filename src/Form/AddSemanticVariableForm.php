@@ -4,8 +4,8 @@ namespace Drupal\sem\Form;
 
 use Drupal\Core\Form\FormBase;
 use Drupal\Core\Form\FormStateInterface;
-use Drupal\sir\Utils;
-use Drupal\sir\Vocabulary\HASCO;
+use Drupal\rep\Utils;
+use Drupal\rep\Vocabulary\HASCO;
 
 class AddSemanticVariableForm extends FormBase {
 
@@ -86,7 +86,7 @@ class AddSemanticVariableForm extends FormBase {
         '"comment":"' . $form_state->getValue('semantic_variable_description') . '",' . 
         '"hasSIRManagerEmail":"' . $uemail . '"}';
 
-      $fusekiAPIservice = \Drupal::service('sir.api_connector');
+      $api = \Drupal::service('rep.api_connector');
       $fusekiAPIservice->semanticVariableAdd($semanticVariableJSON);
       \Drupal::messenger()->addMessage(t("Semantic Variable has been added successfully."));      
       $form_state->setRedirectUrl(Utils::selectBackUrl('semanticvariable'));

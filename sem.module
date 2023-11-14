@@ -1,0 +1,23 @@
+<?php
+/**
+ * Implements hook_theme
+ */
+function sem_theme($existing, $type, $theme, $path)
+{
+    return [
+        'list-page' => [
+            'variables' => array(
+                'items' => array(          
+                    'offset' => '',
+                    'first' => '',
+                    'last' => '',
+                    'previous' => '',
+                    'next' => '',
+                    'links' => array(),
+                    'title' => ''
+                )
+            )
+        ],
+    ];
+}
+

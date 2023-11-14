@@ -4,8 +4,8 @@ namespace Drupal\sem\Form;
 
 use Drupal\Core\Form\FormBase;
 use Drupal\Core\Form\FormStateInterface;
-use Drupal\sir\Utils;
-use Drupal\sir\Vocabulary\HASCO;
+use Drupal\rep\Utils;
+use Drupal\rep\Vocabulary\HASCO;
 
 class EditSemanticVariableForm extends FormBase {
 
@@ -44,7 +44,7 @@ class EditSemanticVariableForm extends FormBase {
     $uri_decode=base64_decode($uri);
     $this->setSemanticVariableUri($uri_decode);
 
-    $fusekiAPIservice = \Drupal::service('sir.api_connector');
+    $api = \Drupal::service('rep.api_connector');
     $rawresponse = $fusekiAPIservice->getUri($this->getSemanticVariableUri());
     $obj = json_decode($rawresponse);
     
@@ -127,7 +127,7 @@ class EditSemanticVariableForm extends FormBase {
         '"hasSIRManagerEmail":"'.$useremail.'"}';
 
       // UPDATE BY DELETING AND CREATING
-      $fusekiAPIservice = \Drupal::service('sir.api_connector');
+      $api = \Drupal::service('rep.api_connector');
       $fusekiAPIservice->semanticVariableDel($this->getSemanticVariable()->uri);
       $fusekiAPIservice->semanticVariableAdd($semanticVariableJson);
     

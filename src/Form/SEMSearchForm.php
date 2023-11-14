@@ -7,8 +7,8 @@ use Drupal\Core\Form\FormStateInterface;
 use Drupal\Core\Url;
 use Drupal\Core\Ajax\AjaxResponse;
 use Drupal\Core\Ajax\RedirectCommand;
-use Drupal\sir\Vocabulary\HASCO;
-use Drupal\sir\Vocabulary\VSTOI;
+use Drupal\rep\Vocabulary\HASCO;
+use Drupal\rep\Vocabulary\VSTOI;
 
 class SEMSearchForm extends FormBase {
 

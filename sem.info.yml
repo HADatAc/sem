@@ -1,6 +1,9 @@
-name: Semantic Variables
-description: GUI for managing semantic variables on a back-end HASCO API
+name: Semantic Elements
+description: GUI for managing semantic elements like entities, attributes and variables stored in a HASCO API
 package: Semantic Tools
 core_version_requirement: ^8 || ^9
 type: module 
-configure: sem.admin_settings
+dependencies:
+  - drupal:rep
+version: '0.6.0'
+configure: rep.admin_settings

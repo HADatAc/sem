@@ -2,23 +2,27 @@
 
 # Landing page
 
-sem.index:
-  path: 'sem'
+sem.search:
+  path: 'sem/list/{elementtype}/{keyword}/{language}/{page}/{pagesize}'
   defaults:
-    _controller: '\Drupal\sem\Controller\InitializationController::index'
-    _title: 'Semantic Variable'    
+    _form: '\Drupal\sem\Form\SEMListForm'
+    elementtype: 'entity'
+    keyword: '_'
+    language: '_'
+    page: '1'
+    pagesize: '12'
   requirements:
     _permission: 'access content'
-  #  _custom_access_check: 'TRUE'    
+    _custom_access_check: 'TRUE'    
   options:
     no_cache: 'TRUE'
-    
+
 # Main menu options
 
 sem.list_element:
   path: 'sem/list/{elementtype}/{keyword}/{page}/{pagesize}'
   defaults:
-    _form: '\Drupal\sem\Form\ListForm'
+    _form: '\Drupal\sem\Form\SEMListForm'
   requirements:
     _permission: 'access content'
     _custom_access_check: 'TRUE'    
@@ -28,7 +32,7 @@ sem.list_element:
 sem.select_element:
   path: 'sem/select/{elementtype}/{page}/{pagesize}'
   defaults:
-    _form: '\Drupal\sem\Form\SelectForm'
+    _form: '\Drupal\sem\Form\SEMSelectForm'
   requirements:
     _permission: 'access content'
     _custom_access_check: 'TRUE'    

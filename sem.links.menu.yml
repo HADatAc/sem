@@ -1,16 +1,16 @@
 sem.top_level:
-  title: Variables
-  description: Manage Semantic Variables
-  route_name: sem.index
+  title: Semantic Elements
+  description: Manage Semantic Elements
+  route_name: rep.about
   menu_name: main
   weight: 90
   requirements:
     _permission: 'access content'
     
-sem.search:
+sem.search_option:
   title: Search Semantic Elements
   description: Search Semantic Elements
-  route_name: sem.index
+  route_name: sem.search
   parent: sem.top_level
   menu_name: main
   enabled: 1

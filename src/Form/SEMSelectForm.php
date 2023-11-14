@@ -5,10 +5,10 @@ namespace Drupal\sem\Form;
 use Drupal\Core\Form\FormBase;
 use Drupal\Core\Form\FormStateInterface;
 use Drupal\Core\Url;
-use Drupal\sem\ListManagerEmailPage;
+use Drupal\rep\ListManagerEmailPage;
 use Drupal\sem\Entity\SemanticVariable;
 
-class SelectForm extends FormBase {
+class SEMSelectForm extends FormBase {
 
   /**
    * {@inheritdoc}
@@ -211,7 +211,7 @@ class SelectForm extends FormBase {
       if (sizeof($rows) <= 0) {
         \Drupal::messenger()->addMessage(t("At least one " . $this->single_class_name . " needs to be selected to be deleted."));      
       } else {
-        $fusekiAPIservice = \Drupal::service('sir.api_connector');
+        $api = \Drupal::service('rep.api_connector');
         foreach($rows as $uri) {
           if ($this->element_type == 'semanticvariable') {
             $fusekiAPIservice->semanticVariableDel($uri);
@@ -223,7 +223,7 @@ class SelectForm extends FormBase {
 
     // BACK TO MAIN PAGE
     if ($button_name === 'back') {
-      $url = Url::fromRoute('sem.index');
+      $url = Url::fromRoute('sem.search');
       $form_state->setRedirectUrl($url);
     }  
 

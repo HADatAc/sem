@@ -2,8 +2,8 @@
 
 namespace Drupal\sem\Entity;
 
-use Drupal\sem\Vocabulary\SEMGUI;
-use Drupal\sir\Utils;
+use Drupal\rep\Vocabulary\REPGUI;
+use Drupal\rep\Utils;
 
 class Unit {
 
@@ -35,7 +35,7 @@ class Unit {
       $root_url = \Drupal::request()->getBaseUrl();
       $encodedUri = rawurlencode(rawurlencode($element->uri));
       $output[$element->uri] = [
-        'element_uri' => t('<a href="'.$root_url.SEMGUI::DESCRIBE_PAGE.base64_encode($uri).'">'.$uri.'</a>'),     
+        'element_uri' => t('<a href="'.$root_url.REPGUI::DESCRIBE_PAGE.base64_encode($uri).'">'.$uri.'</a>'),     
         'element_name' => t($label),     
       ];
     }
