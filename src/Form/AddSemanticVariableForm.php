@@ -24,6 +24,31 @@ class AddSemanticVariableForm extends FormBase {
       '#type' => 'textfield',
       '#title' => $this->t('Name'),
     ];
+    $form['semantic_variable_entity'] = [
+      '#type' => 'textfield',
+      '#title' => $this->t('Entity (required)'),
+      '#autocomplete_route_name' => 'sem.semanticvariable_entity_autocomplete',
+
+    ];
+    $form['semantic_variable_attribute'] = [
+      '#type' => 'textfield',
+      '#title' => $this->t('Attribute (required)'),
+      '#autocomplete_route_name' => 'sem.semanticvariable_attribute_autocomplete',
+    ];
+    $form['semantic_variable_in_relation_to'] = [
+      '#type' => 'textfield',
+      '#title' => $this->t('In Relation To (optional)'),
+      '#autocomplete_route_name' => 'sem.semanticvariable_attribute_autocomplete',
+    ];
+    $form['semantic_variable_unit'] = [
+      '#type' => 'textfield',
+      '#title' => $this->t('Unit (optional)'),
+      '#autocomplete_route_name' => 'sem.semanticvariable_unit_autocomplete',
+    ];
+    $form['semantic_variable_time'] = [
+      '#type' => 'textfield',
+      '#title' => $this->t('Time Restriction (optional)'),
+    ];
     $form['semantic_variable_version'] = [
       '#type' => 'textfield',
       '#title' => $this->t('Version'),
@@ -59,6 +84,12 @@ class AddSemanticVariableForm extends FormBase {
       if(strlen($form_state->getValue('semantic_variable_name')) < 1) {
         $form_state->setErrorByName('semantic_variable_name', $this->t('Please enter a valid name for the Semantic Variable'));
       }
+      if(strlen($form_state->getValue('semantic_variable_entity')) < 1) {
+        $form_state->setErrorByName('semantic_variable_entity', $this->t('Please enter a valid entity for the Semantic Variable'));
+      }
+      if(strlen($form_state->getValue('semantic_variable_attribute')) < 1) {
+        $form_state->setErrorByName('semantic_variable_attribute', $this->t('Please enter a valid attribute for the Semantic Variable'));
+      }
     }
   }
 
@@ -78,16 +109,21 @@ class AddSemanticVariableForm extends FormBase {
     try {
       $uemail = \Drupal::currentUser()->getEmail();
       $newSemanticVariableUri = Utils::uriGen('semanticvariable');
-      $semanticVariableJSON = '{"uri":"'.$newExperienceUri.'",' . 
+      $semanticVariableJSON = '{"uri":"'.$newSemanticVariableUri.'",' . 
         '"typeUri":"'.HASCO::SEMANTIC_VARIABLE.'",'.
         '"hascoTypeUri":"'.HASCO::SEMANTIC_VARIABLE.'",'.
         '"label":"' . $form_state->getValue('semantic_variable_name') . '",' . 
+        '"hasEntity":"' . $form_state->getValue('semantic_variable_entity') . '",' . 
+        '"hasAttribute":"' . $form_state->getValue('semantic_variable_attribute') . '",' .
+        //'"hasInRelationTo":"' . $form_state->getValue('semantic_variable_in_relation_to') . '",' . 
+        //'"hasUnit":"' . $form_state->getValue('semantic_variable_unit') . '",' . 
+        //'"hasTime":"' . $form_state->getValue('semantic_variable_name') . '",' . 
         '"hasVersion":"' . $form_state->getValue('semantic_variable_version') . '",' . 
         '"comment":"' . $form_state->getValue('semantic_variable_description') . '",' . 
         '"hasSIRManagerEmail":"' . $uemail . '"}';
 
       $api = \Drupal::service('rep.api_connector');
-      $fusekiAPIservice->semanticVariableAdd($semanticVariableJSON);
+      $api->semanticVariableAdd($semanticVariableJSON);
       \Drupal::messenger()->addMessage(t("Semantic Variable has been added successfully."));      
       $form_state->setRedirectUrl(Utils::selectBackUrl('semanticvariable'));
 

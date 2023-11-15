@@ -44,6 +44,7 @@ class SEMListForm extends FormBase {
    */
   public function buildForm(array $form, FormStateInterface $form_state, $elementtype=NULL, $keyword=NULL, $page=NULL, $pagesize=NULL) {
 
+
     // GET TOTAL NUMBER OF ELEMENTS AND TOTAL NUMBER OF PAGES
     $this->setListSize(-1);
     if ($elementtype != NULL) {

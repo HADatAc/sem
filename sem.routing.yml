@@ -63,6 +63,32 @@ sem.edit_semantic_variable:
   options:
     no_cache: 'TRUE'
 
+# AUTOCOMPLETE
+
+sem.semanticvariable_entity_autocomplete:
+  path: '/sem/manage/semanticvariable/entity/autocomplete'
+  defaults:
+    _controller: '\Drupal\sem\Controller\JsonApiEntityController::handleAutocomplete'
+    _format: json
+  requirements:
+    _permission: 'access content'
+
+sem.semanticvariable_attribute_autocomplete:
+  path: '/sem/manage/semanticvariable/attribute/autocomplete'
+  defaults:
+    _controller: '\Drupal\sem\Controller\JsonApiAttributeController::handleAutocomplete'
+    _format: json
+  requirements:
+    _permission: 'access content'
+
+sem.semanticvariable_unit_autocomplete:
+  path: '/sem/manage/semanticvariable/unit/autocomplete'
+  defaults:
+    _controller: '\Drupal\sem\Controller\JsonApiUnitController::handleAutocomplete'
+    _format: json
+  requirements:
+    _permission: 'access content'
+
 # Configuration option
 
 #sem.admin_settings_custom:

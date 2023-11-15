@@ -214,7 +214,7 @@ class SEMSelectForm extends FormBase {
         $api = \Drupal::service('rep.api_connector');
         foreach($rows as $uri) {
           if ($this->element_type == 'semanticvariable') {
-            $fusekiAPIservice->semanticVariableDel($uri);
+            $api->semanticVariableDel($uri);
           } 
         }
         \Drupal::messenger()->addMessage(t("Selected " . $this->plural_class_name . " has/have been deleted successfully."));      

@@ -23,8 +23,6 @@ class SEMSearchForm extends FormBase {
 
   protected $keyword;
 
-  protected $language;
-
   protected $page;
 
   protected $pagesize;
@@ -104,9 +102,9 @@ class SEMSearchForm extends FormBase {
         'unit' => $this->t('Units'),
       ],
       '#default_value' => $this->getElementType(),
-      //'#ajax' => [
-      //  'callback' => '::ajaxSubmitForm',
-      //],
+      '#ajax' => [
+        'callback' => '::ajaxSubmitForm',
+      ],
     ];
     $form['search_keyword'] = [
       '#type' => 'textfield',
@@ -144,7 +142,6 @@ class SEMSearchForm extends FormBase {
     $url->setRouteParameter('keyword', $this->getKeyword());
     $url->setRouteParameter('page', $this->getPage());
     $url->setRouteParameter('pagesize', $this->getPageSize());
-    print_r($url);
     return $url;
   }
 

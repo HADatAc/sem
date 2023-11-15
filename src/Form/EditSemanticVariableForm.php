@@ -45,7 +45,7 @@ class EditSemanticVariableForm extends FormBase {
     $this->setSemanticVariableUri($uri_decode);
 
     $api = \Drupal::service('rep.api_connector');
-    $rawresponse = $fusekiAPIservice->getUri($this->getSemanticVariableUri());
+    $rawresponse = $api->getUri($this->getSemanticVariableUri());
     $obj = json_decode($rawresponse);
     
     if ($obj->isSuccessful) {
@@ -128,8 +128,8 @@ class EditSemanticVariableForm extends FormBase {
 
       // UPDATE BY DELETING AND CREATING
       $api = \Drupal::service('rep.api_connector');
-      $fusekiAPIservice->semanticVariableDel($this->getSemanticVariable()->uri);
-      $fusekiAPIservice->semanticVariableAdd($semanticVariableJson);
+      $api->semanticVariableDel($this->getSemanticVariable()->uri);
+      $api->semanticVariableAdd($semanticVariableJson);
     
       \Drupal::messenger()->addMessage(t("SemanticVariable has been updated successfully."));
       $form_state->setRedirectUrl(Utils::selectBackUrl('semanticvariable'));

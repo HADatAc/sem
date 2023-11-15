@@ -12,6 +12,8 @@ class SemanticVariable {
     return $header = [
       'element_uri' => t('URI'),
       'element_name' => t('Name'),
+      'element_entity' => t('Entity'),
+      'element_attribute' => t('Attribute'),
     ];
   
   }
@@ -36,7 +38,9 @@ class SemanticVariable {
       $encodedUri = rawurlencode(rawurlencode($element->uri));
       $output[$element->uri] = [
         'element_uri' => t('<a href="'.$root_url.REPGUI::DESCRIBE_PAGE.base64_encode($uri).'">'.$uri.'</a>'),     
-        'element_name' => t($label),     
+        'element_name' => t($label),    
+        'element_entity' => t($element->hasEntity),
+        'element_attribute' => t($element->hasAttribute), 
       ];
     }
     return $output;
