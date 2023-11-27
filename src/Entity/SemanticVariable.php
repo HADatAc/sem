@@ -34,13 +34,21 @@ class SemanticVariable {
       if ($element->label != NULL) {
         $label = $element->label;
       }
+      $entityUri = ' ';
+      if ($element->entityUri != NULL && $element->entityUri != '') {
+        $entityUri = $element->entityLabel . ' (' . Utils::namespaceUri($element->entityUri) . ')';
+      }
+      $attributeUri = ' ';
+      if ($element->attributeUri != NULL && $element->attributeUri != '') {
+        $attributeUri = $element->attributeLabel . ' (' . Utils::namespaceUri($element->attributeUri) . ')';
+      }
       $root_url = \Drupal::request()->getBaseUrl();
       $encodedUri = rawurlencode(rawurlencode($element->uri));
       $output[$element->uri] = [
         'element_uri' => t('<a href="'.$root_url.REPGUI::DESCRIBE_PAGE.base64_encode($uri).'">'.$uri.'</a>'),     
         'element_name' => t($label),    
-        'element_entity' => t($element->hasEntity),
-        'element_attribute' => t($element->hasAttribute), 
+        'element_entity' => $entityUri,
+        'element_attribute' => $attributeUri, 
       ];
     }
     return $output;

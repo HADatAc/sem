@@ -45,7 +45,7 @@ sem.add_semantic_variable:
   path: 'sem/manage/addsemanticvariable'
   defaults:
     _form: '\Drupal\sem\Form\AddSemanticVariableForm'
-    _title: 'Add SemanticVariable'    
+    _title: 'Add Semantic Variable'    
   requirements:
     _permission: 'access content'
     _custom_access_check: 'TRUE'    
@@ -60,6 +60,30 @@ sem.edit_semantic_variable:
   requirements:
     _permission: 'access content'  
     _custom_access_check: 'TRUE'      
+  options:
+    no_cache: 'TRUE'
+
+# Data Dictionary options
+
+sem.manage_data_dictionary:
+  path: 'sem/manage/datadictionary'
+  defaults:
+    _title: 'Manage Data Dictionary'    
+  requirements:
+    _permission: 'access content'
+    _custom_access_check: 'TRUE'    
+  options:
+    no_cache: 'TRUE'
+
+# Semantic Data Dictionary options
+
+sem.manage_semantic_data_dictionary:
+  path: 'sem/manage/semanticdatadictionary'
+  defaults:
+    _title: 'Manage Semantic Data Dictionary'    
+  requirements:
+    _permission: 'access content'
+    _custom_access_check: 'TRUE'    
   options:
     no_cache: 'TRUE'
 

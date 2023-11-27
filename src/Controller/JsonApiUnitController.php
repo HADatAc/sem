@@ -32,8 +32,8 @@ class JsonApiUnitController extends ControllerBase{
     }
     foreach ($units as $unit) {
       $results[] = [
-        'value' => $unity->label . ' [' . $unity->uri . ']',
-        'label' => $unity->label,
+        'value' => $unit->label . ' [' . $unit->uri . ']',
+        'label' => $unit->label,
       ];
     }
     return new JsonResponse($results);

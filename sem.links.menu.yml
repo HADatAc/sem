@@ -18,7 +18,7 @@ sem.search_option:
   requirements:
    _permission: 'access content'
    
-sem.manage_entities:
+sem.manage_semantic_variable:
   title: Manage Semantic Variables
   description: Manage Semantic Variables
   route_name: sem.select_element
@@ -29,6 +29,28 @@ sem.manage_entities:
   parent: sem.top_level
   menu_name: main
   weight: 2
+  requirements:
+    _permission: 'access content'
+    _role: 'authenticated'
+
+sem.manage_data_dictionary:
+  title: Manage Data Dictionary
+  description: Manage Data Dictionaries
+  route_name: sem.manage_data_dictionary
+  parent: sem.top_level
+  menu_name: main
+  weight: 3
+  requirements:
+    _permission: 'access content'
+    _role: 'authenticated'
+
+sem.semantic_data_dictionary:
+  title: Manage Semantic Data Dictionary
+  description: Manage Semantic Data Dictionaries
+  route_name: sem.manage_semantic_data_dictionary
+  parent: sem.top_level
+  menu_name: main
+  weight: 4
   requirements:
     _permission: 'access content'
     _role: 'authenticated'

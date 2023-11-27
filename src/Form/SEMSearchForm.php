@@ -96,6 +96,8 @@ class SEMSearchForm extends FormBase {
       '#title' => $this->t('Element Type'),
       '#required' => TRUE,
       '#options' => [
+        'datadictionary' => $this->t('Data Dictionaries'),
+        'semanticdatadictionary' => $this->t('Semantic Data Dictionaries (SDDs)'),
         'semanticvariable' => $this->t('Semantic Variables'),
         'entity' => $this->t('Entities'),
         'attribute' => $this->t('Attributes'),

@@ -1,0 +1,70 @@
+<?php
+
+use Drupal\views\Entity\View;
+use Drupal\views\ViewExecutable;
+use Drupal\views\Views;
+use Drupal\views\ViewEntityInterface;
+
+/**
+ * Programmatically creates and saves a view.
+ */
+function create_and_save_view() {
+  $view_id = 'semanticdatadictionary_view';
+  $view = \Drupal\views\Entity\View::load($view_id);
+  if ($view == NULL) {
+
+    // Create a new view for nodes of the given content type.
+    $view = new view();
+    $view->name = $view_id;
+    $view->description = 'Semantic Data Dictionary';
+    $view->tag = 'default';
+    $view->base_table = 'node';
+    $view->human_name = 'Custom Node View';
+    $view->core = array('default' => 1);
+    $view->api_version = '3.0';
+    $view->disabled = FALSE;
+
+    /**
+    // Define the view
+    $view = View::create([
+        'id' => $view_id,
+        'label' => 'Semantic Data Dictionary',
+        'description' => 'Shows Semantic Data Dictionaries',
+        'base_table' => 'node',
+        'tag' => 'default',
+        'core' => 9,
+        'human_name' => 'Semantic Data Dictionary',
+        'api_version' => '3.0',
+        'disabled' => FALSE,
+    ]);
+    */
+
+    // Display 10 items per page.
+    $view->display['default']->handler->options['items_per_page'] = 10;
+
+    // Filter by content type.
+    $view->display['default']->handler->options['filters']['type']['value']['semanticdatadictionary'] = 'semanticdatadictionary';
+
+    // Show fields.
+    $view->display['default']->handler->options['fields']['title']['id'] = 'title';
+    $view->display['default']->handler->options['fields']['title']['table'] = 'node';
+    $view->display['default']->handler->options['fields']['field_sdd_file_field']['id'] = 'field_sdd_file_field';
+    $view->display['default']->handler->options['fields']['field_sdd_file_field']['table'] = 'field_data_sdd_file_field';
+
+    // Configure the default display as a table.
+    $view->display['default']->display_options['style_plugin'] = 'table';
+
+    // Create a page display.
+    $view->new_display('page', 'Page', 'page_1');
+    $view->display['page_1']->display_options['path'] = '/sem/manage/semanticdatadictionary';
+
+    // Create a block display.
+    $view->new_display('block', 'Block', 'block_1');
+    $view->display['block_1']->display_options['block_description'] = 'Semantic Data Dictionary Block';
+
+    $view->save();
+  }
+  else {
+    \Drupal::messenger()->addMessage(t("View " . $view_id . " already exists."));      
+  }
+}

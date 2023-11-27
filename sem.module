@@ -1,8 +1,134 @@
 <?php
+
+use Drupal\node\Entity\NodeType;
+use Drupal\Core\EntityInterface;
+use Drupal\Core\Entity\EntityStorageException;
+use Drupal\Core\Url;
+use Drupal\views\Entity\View;
+use Drupal\views\ViewExecutable;
+use Drupal\views\Views;
+use Drupal\views\ViewEntityInterface;
+
+
+/**
+ * Implements hook_install().
+ */
+function sem_install() {
+
+  // Load the field configuration.
+  //\Drupal::configFactory()->getEditable('field.field.node.data_dictionary.field_data_dictionary_file')->save();
+  // Load the content type configuration.
+  //\Drupal::configFactory()->getEditable('node.type.data_dictionary')->save();
+
+}
+
+/**
+ * Implements hook_uninstall().
+ */
+function sem_uninstall() {
+
+  // Remove configuration files.
+  $config_to_remove = [
+    'core.entity_form_display.node.data_dictionary.default.yml',
+    'core.entity_form_display.node.semantic_data_dictionary.default.yml',
+    //'core.entity_view_display.node.data_dictionary.default.yml',
+    'views.view.data_dictionary',
+    'views.view.semantic_data_dictionary',
+    'field.storage.node.field_data_dictionary_file',
+    'field.storage.node.field_sdd_file',
+    'field.field.node.data_dictionary.field_data_dictionary_file',
+    'field.field.node.semantic_data_dictionary.field_sdd_file',
+    'node.type.semantic_data_dictionary',
+    'node.type.data_dictionary']; // Replace with your actual config names.
+
+  foreach ($config_to_remove as $config_name) {
+    $config = \Drupal::configFactory()->getEditable($config_name);
+    // check if configuration is installed before deleting it
+    if (!$config->isNew()) {
+      $config->delete();
+    }
+  }
+
+
+  // Specify the ID of the view you want to delete.
+  //$view_id = 'semanticdatadictionary_view';
+  // Load the view if it exists.
+  //$view = \Drupal\views\Entity\View::load($view_id);
+  //if ($view) {
+    // Delete the view.
+  //  $view->delete();
+  //}
+}
+
+/**
+ * Implements hook_entity_presave() for nodes.
+ */
+function sem_entity_presave(Drupal\Core\Entity\EntityInterface $entity) {
+
+  // Check if the content type is 'data_dictionary'.
+  if ($entity->getEntityTypeId() === 'node' && $entity->bundle() === 'data_dictionary') {
+    // Check if the node has a file field with an uploaded file.
+    $file_field = $entity->get('field_data_dictionary_file')->entity;
+    if ($file_field instanceof \Drupal\file\FileInterface) {
+      // Set the node title to the file name.
+      $entity->setTitle($file_field->getFilename());
+    }
+  }
+
+  // Check if the content type is 'semantic_data_dictionary'.
+  if ($entity->getEntityTypeId() === 'node' && $entity->bundle() === 'semantic_data_dictionary') {
+    // Check if the node has a file field with an uploaded file.
+    $file_field = $entity->get('field_sdd_file')->entity;
+    if ($file_field instanceof \Drupal\file\FileInterface) {
+      // Set the node title to the file name.
+      $entity->setTitle($file_field->getFilename());
+    }
+  }
+
+}
+
+/**
+ *  Implements hook_entity_operations().
+ */
+function sem_node_operations(EntityInterface $entity) {
+  $operations = [];
+  $url = Url::fromRoute('sem.search');
+  $operations['ingest'] = [
+    'title' => t('Ingest'),
+    'weight' => 60,
+    'url' => $url,
+  ];
+  return $operations;
+}
+
+
+/**
+ * Implements hook_entity_type_alter().
+ */
+//function sem_entity_type_alter(array &$entity_types) {
+  // Add a custom operation for nodes.
+//  if (isset($entity_types['node'])) {
+//    dpm($entity_types['node']);
+//    $entity_types['node']->setHandlerClass('operations', 'Drupal\sem\IngestOperation');
+//  }
+//}
+
+/**
+ * Implements sem_form_alter().
+ */
+function sem_form_alter(&$form, \Drupal\Core\Form\FormStateInterface $form_state, $form_id) {
+  // Check if the form is for the desired content type.
+  if ($form_id == 'node_data_dictionary_form' ||
+      $form_id == 'node_semantic_data_dictionary_form') {
+    // Make the title field optional.
+    $form['title']['#required'] = FALSE;
+  }
+}
+
 /**
  * Implements hook_theme
  */
-function sem_theme($existing, $type, $theme, $path)
+function sem_theme($existing, $type, $theme, $path) 
 {
     return [
         'list-page' => [
@@ -20,4 +146,37 @@ function sem_theme($existing, $type, $theme, $path)
         ],
     ];
 }
+
+
+/**
+ * Implements hook_views_pre_render().
+ */
+function sem_views_pre_render(ViewExecutable $view) {
+
+  //dpm($view);
+
+  // Check if the view is the one you want to modify.
+  if ($view->id() == 'your_view_machine_name' && $view->current_display == 'your_display_id') {
+    // Modify the results.
+    foreach ($view->result as $row_index => $row) {
+      // Your custom logic here.
+      $view->result[$row_index]->custom_field = 'Modified Value';
+    }
+  }
+}
+
+/**
+ * Implements hook_preprocess_views_view_field().
+ */
+function sem_preprocess_views_view_field(&$variables) {
+
+  //dpm($variables);
+
+  // Check the view and field you want to modify.
+  if ($variables['view']->id() == 'your_view_machine_name' && $variables['field']->field == 'your_field_machine_name') {
+    // Modify the output to include a link.
+    $variables['output'] = '<a href="/your-operation-link/' . $variables['row']->your_field_machine_name . '">' . $variables['output'] . '</a>';
+  }
+}
+
 
