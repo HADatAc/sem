@@ -44,16 +44,31 @@ sem.manage_data_dictionary:
     _permission: 'access content'
     _role: 'authenticated'
 
-sem.semantic_data_dictionary:
+sem.manage_sdd:
   title: Manage Semantic Data Dictionary
   description: Manage Semantic Data Dictionaries
-  route_name: sem.manage_semantic_data_dictionary
+  route_name: sem.select_element
+  route_parameters:
+    elementtype: 'sdd'
+    page: '1'
+    pagesize: '10'
   parent: sem.top_level
   menu_name: main
   weight: 4
   requirements:
     _permission: 'access content'
     _role: 'authenticated'
+
+#sem.semantic_data_dictionary:
+#  title: Manage Semantic Data Dictionary
+#  description: Manage Semantic Data Dictionaries
+#  route_name: sem.manage_semantic_data_dictionary
+#  parent: sem.top_level
+#  menu_name: main
+#  weight: 4
+#  requirements:
+#    _permission: 'access content'
+#    _role: 'authenticated'
 
 #sem.admin_settings_link:
 #  title: Semantic Variable Config

@@ -45,14 +45,12 @@ class EditSemanticVariableForm extends FormBase {
     $this->setSemanticVariableUri($uri_decode);
 
     $api = \Drupal::service('rep.api_connector');
-    $rawresponse = $api->getUri($this->getSemanticVariableUri());
-    $obj = json_decode($rawresponse);
-    
-    if ($obj->isSuccessful) {
-      $this->setSemanticVariable($obj->body);
-    } else {
+    $svar = $api->parseObjectResponse($api->getUri($this->getSemanticVariableUri()),'getUri');
+    if ($svar == NULL) {
       \Drupal::messenger()->addMessage(t("Failed to retrieve Semantic Variable."));
       $form_state->setRedirectUrl(Utils::selectBackUrl('semanticvariable'));
+    } else {
+      $this->setSemanticVariable($svar);
     }
 
     $form['semantic_variable_name'] = [

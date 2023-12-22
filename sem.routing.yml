@@ -87,6 +87,18 @@ sem.manage_semantic_data_dictionary:
   options:
     no_cache: 'TRUE'
 
+sem.add_sdd:
+  path: 'sem/manage/addsdd'
+  defaults:
+    _form: '\Drupal\sem\Form\AddSDDForm'
+    _title: 'Add Semantic Data Dictionary (SDD)'    
+  requirements:
+    _permission: 'access content'
+    _custom_access_check: 'TRUE'    
+  options:
+    no_cache: 'TRUE'
+
+
 # AUTOCOMPLETE
 
 sem.semanticvariable_entity_autocomplete:
@@ -125,4 +137,13 @@ sem.semanticvariable_unit_autocomplete:
 #  options:
 #    _admin_route: TRUE
 #    no_cache: 'TRUE'
+
+sem.modal_form:
+  path: '/sem/modalform'
+  defaults:
+    _form: '\Drupal\sem\Form\LogModalForm'
+    _title: 'Logger'
+  requirements:
+    _permission: 'access content'
+
 
