@@ -297,7 +297,7 @@ class SEMSelectForm extends FormBase {
             return;
           } 
           //dpm($sdd->dataFile->id);
-          $msg = $api->parseObjectResponse($api->uploadSDD($sdd),'uploadSDD');
+          $msg = $api->parseObjectResponse($api->uploadTemplate("sdd",$sdd),'uploadTemplate');
           if ($msg == NULL) {
             \Drupal::messenger()->addError(t("Selected " . $this->single_class_name . " FAILED to be submitted for ingestion."));      
             $form_state->setRedirectUrl(Utils::selectBackUrl('sdd'));
