@@ -1,20 +1,20 @@
-sem.top_level:
-  title: Semantic Elements
-  description: Manage Semantic Elements
-  route_name: rep.about
-  menu_name: main
-  weight: 90
-  requirements:
-    _permission: 'access content'
+#sem.top_level:
+#  title: Semantic Elements
+#  description: Manage Semantic Elements
+#  route_name: rep.about
+#  menu_name: main
+#  weight: 90
+#  requirements:
+#    _permission: 'access content'
     
 sem.search_option:
   title: Search Semantic Elements
   description: Search Semantic Elements
   route_name: sem.search
-  parent: sem.top_level
+  parent: std.top_level
   menu_name: main
-  enabled: 1
-  weight: 1
+  #enabled: 1
+  weight: 2
   requirements:
    _permission: 'access content'
    
@@ -26,38 +26,13 @@ sem.manage_semantic_variable:
     elementtype: 'semanticvariable'
     page: '1'
     pagesize: '10'
-  parent: sem.top_level
+  parent: std.top_level
   menu_name: main
-  weight: 2
+  weight: 26
   requirements:
     _permission: 'access content'
     _role: 'authenticated'
 
-sem.manage_data_dictionary:
-  title: Manage Data Dictionary
-  description: Manage Data Dictionaries
-  route_name: sem.manage_data_dictionary
-  parent: sem.top_level
-  menu_name: main
-  weight: 3
-  requirements:
-    _permission: 'access content'
-    _role: 'authenticated'
-
-sem.manage_sdd:
-  title: Manage Semantic Data Dictionary
-  description: Manage Semantic Data Dictionaries
-  route_name: sem.select_element
-  route_parameters:
-    elementtype: 'sdd'
-    page: '1'
-    pagesize: '10'
-  parent: sem.top_level
-  menu_name: main
-  weight: 4
-  requirements:
-    _permission: 'access content'
-    _role: 'authenticated'
 
 #sem.semantic_data_dictionary:
 #  title: Manage Semantic Data Dictionary
