@@ -2,23 +2,27 @@
 
 # Landing page
 
-sem.index:
-  path: 'sem'
+sem.search:
+  path: 'sem/list/{elementtype}/{keyword}/{language}/{page}/{pagesize}'
   defaults:
-    _controller: '\Drupal\sem\Controller\InitializationController::index'
-    _title: 'Semantic Variable'    
+    _form: '\Drupal\sem\Form\SEMListForm'
+    elementtype: 'entity'
+    keyword: '_'
+    language: '_'
+    page: '1'
+    pagesize: '12'
   requirements:
     _permission: 'access content'
-  #  _custom_access_check: 'TRUE'    
+    _custom_access_check: 'TRUE'    
   options:
     no_cache: 'TRUE'
-    
+
 # Main menu options
 
 sem.list_element:
   path: 'sem/list/{elementtype}/{keyword}/{page}/{pagesize}'
   defaults:
-    _form: '\Drupal\sem\Form\ListForm'
+    _form: '\Drupal\sem\Form\SEMListForm'
   requirements:
     _permission: 'access content'
     _custom_access_check: 'TRUE'    
@@ -28,7 +32,7 @@ sem.list_element:
 sem.select_element:
   path: 'sem/select/{elementtype}/{page}/{pagesize}'
   defaults:
-    _form: '\Drupal\sem\Form\SelectForm'
+    _form: '\Drupal\sem\Form\SEMSelectForm'
   requirements:
     _permission: 'access content'
     _custom_access_check: 'TRUE'    
@@ -41,7 +45,7 @@ sem.add_semantic_variable:
   path: 'sem/manage/addsemanticvariable'
   defaults:
     _form: '\Drupal\sem\Form\AddSemanticVariableForm'
-    _title: 'Add SemanticVariable'    
+    _title: 'Add Semantic Variable'    
   requirements:
     _permission: 'access content'
     _custom_access_check: 'TRUE'    
@@ -59,6 +63,68 @@ sem.edit_semantic_variable:
   options:
     no_cache: 'TRUE'
 
+# Data Dictionary options
+
+sem.manage_data_dictionary:
+  path: 'sem/manage/datadictionary'
+  defaults:
+    _title: 'Manage Data Dictionary'    
+  requirements:
+    _permission: 'access content'
+    _custom_access_check: 'TRUE'    
+  options:
+    no_cache: 'TRUE'
+
+# Semantic Data Dictionary options
+
+sem.manage_semantic_data_dictionary:
+  path: 'sem/manage/semanticdatadictionary'
+  defaults:
+    _title: 'Manage Semantic Data Dictionary'    
+  requirements:
+    _permission: 'access content'
+    _custom_access_check: 'TRUE'    
+  options:
+    no_cache: 'TRUE'
+
+sem.add_sdd:
+  path: 'sem/manage/addsdd'
+  defaults:
+    _form: '\Drupal\sem\Form\AddSDDForm'
+    _title: 'Add Semantic Data Dictionary (SDD)'    
+  requirements:
+    _permission: 'access content'
+    _custom_access_check: 'TRUE'    
+  options:
+    no_cache: 'TRUE'
+
+
+# AUTOCOMPLETE
+
+sem.semanticvariable_entity_autocomplete:
+  path: '/sem/manage/semanticvariable/entity/autocomplete'
+  defaults:
+    _controller: '\Drupal\sem\Controller\JsonApiEntityController::handleAutocomplete'
+    _format: json
+  requirements:
+    _permission: 'access content'
+
+sem.semanticvariable_attribute_autocomplete:
+  path: '/sem/manage/semanticvariable/attribute/autocomplete'
+  defaults:
+    _controller: '\Drupal\sem\Controller\JsonApiAttributeController::handleAutocomplete'
+    _format: json
+  requirements:
+    _permission: 'access content'
+
+sem.semanticvariable_unit_autocomplete:
+  path: '/sem/manage/semanticvariable/unit/autocomplete'
+  defaults:
+    _controller: '\Drupal\sem\Controller\JsonApiUnitController::handleAutocomplete'
+    _format: json
+  requirements:
+    _permission: 'access content'
+
 # Configuration option
 
 #sem.admin_settings_custom:
@@ -71,4 +137,13 @@ sem.edit_semantic_variable:
 #  options:
 #    _admin_route: TRUE
 #    no_cache: 'TRUE'
+
+sem.modal_form:
+  path: '/sem/modalform'
+  defaults:
+    _form: '\Drupal\sem\Form\LogModalForm'
+    _title: 'Logger'
+  requirements:
+    _permission: 'access content'
+
 

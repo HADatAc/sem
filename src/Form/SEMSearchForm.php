@@ -7,8 +7,8 @@ use Drupal\Core\Form\FormStateInterface;
 use Drupal\Core\Url;
 use Drupal\Core\Ajax\AjaxResponse;
 use Drupal\Core\Ajax\RedirectCommand;
-use Drupal\sir\Vocabulary\HASCO;
-use Drupal\sir\Vocabulary\VSTOI;
+use Drupal\rep\Vocabulary\HASCO;
+use Drupal\rep\Vocabulary\VSTOI;
 
 class SEMSearchForm extends FormBase {
 
@@ -22,8 +22,6 @@ class SEMSearchForm extends FormBase {
   protected $elementtype;
 
   protected $keyword;
-
-  protected $language;
 
   protected $page;
 
@@ -98,15 +96,17 @@ class SEMSearchForm extends FormBase {
       '#title' => $this->t('Element Type'),
       '#required' => TRUE,
       '#options' => [
+        'datadictionary' => $this->t('Data Dictionaries'),
+        'semanticdatadictionary' => $this->t('Semantic Data Dictionaries (SDDs)'),
         'semanticvariable' => $this->t('Semantic Variables'),
         'entity' => $this->t('Entities'),
         'attribute' => $this->t('Attributes'),
         'unit' => $this->t('Units'),
       ],
       '#default_value' => $this->getElementType(),
-      //'#ajax' => [
-      //  'callback' => '::ajaxSubmitForm',
-      //],
+      '#ajax' => [
+        'callback' => '::ajaxSubmitForm',
+      ],
     ];
     $form['search_keyword'] = [
       '#type' => 'textfield',
@@ -144,7 +144,6 @@ class SEMSearchForm extends FormBase {
     $url->setRouteParameter('keyword', $this->getKeyword());
     $url->setRouteParameter('page', $this->getPage());
     $url->setRouteParameter('pagesize', $this->getPageSize());
-    print_r($url);
     return $url;
   }
 

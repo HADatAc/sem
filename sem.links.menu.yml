@@ -1,24 +1,24 @@
-sem.top_level:
-  title: Variables
-  description: Manage Semantic Variables
-  route_name: sem.index
-  menu_name: main
-  weight: 90
-  requirements:
-    _permission: 'access content'
+#sem.top_level:
+#  title: Semantic Elements
+#  description: Manage Semantic Elements
+#  route_name: rep.about
+#  menu_name: main
+#  weight: 90
+#  requirements:
+#    _permission: 'access content'
     
-sem.search:
+sem.search_option:
   title: Search Semantic Elements
   description: Search Semantic Elements
-  route_name: sem.index
-  parent: sem.top_level
+  route_name: sem.search
+  parent: std.top_level
   menu_name: main
-  enabled: 1
-  weight: 1
+  #enabled: 1
+  weight: 2
   requirements:
    _permission: 'access content'
    
-sem.manage_entities:
+sem.manage_semantic_variable:
   title: Manage Semantic Variables
   description: Manage Semantic Variables
   route_name: sem.select_element
@@ -26,12 +26,24 @@ sem.manage_entities:
     elementtype: 'semanticvariable'
     page: '1'
     pagesize: '10'
-  parent: sem.top_level
+  parent: std.top_level
   menu_name: main
-  weight: 2
+  weight: 26
   requirements:
     _permission: 'access content'
     _role: 'authenticated'
+
+
+#sem.semantic_data_dictionary:
+#  title: Manage Semantic Data Dictionary
+#  description: Manage Semantic Data Dictionaries
+#  route_name: sem.manage_semantic_data_dictionary
+#  parent: sem.top_level
+#  menu_name: main
+#  weight: 4
+#  requirements:
+#    _permission: 'access content'
+#    _role: 'authenticated'
 
 #sem.admin_settings_link:
 #  title: Semantic Variable Config

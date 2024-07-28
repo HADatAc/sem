@@ -5,10 +5,14 @@ namespace Drupal\sem\Form;
 use Drupal\Core\Form\FormBase;
 use Drupal\Core\Form\FormStateInterface;
 use Drupal\Core\Url;
-use Drupal\sem\ListManagerEmailPage;
+use Drupal\Component\Serialization\Json;
+use Drupal\file\Entity\File;
+use Drupal\rep\ListManagerEmailPage;
+use Drupal\rep\Utils;
+use Drupal\sem\Entity\SDD;
 use Drupal\sem\Entity\SemanticVariable;
 
-class SelectForm extends FormBase {
+class SEMSelectForm extends FormBase {
 
   /**
    * {@inheritdoc}
@@ -92,18 +96,25 @@ class SelectForm extends FormBase {
     // RETRIEVE ELEMENTS
     $this->setList(ListManagerEmailPage::exec($this->element_type, $this->manager_email, $page, $pagesize));
 
+    //dpm($this->getList()[0]->dataFile);
+
     $this->single_class_name = "";
     $this->plural_class_name = "";
     switch ($this->element_type) {
 
-      // ENTITY
+      // ELEMENTS
       case "semanticvariable":
         $this->single_class_name = "Semantic Variable";
         $this->plural_class_name = "Semantic Variables";
         $header = SemanticVariable::generateHeader();
         $output = SemanticVariable::generateOutput($this->getList());    
         break;
-
+      case "sdd":
+        $this->single_class_name = "SDD";
+        $this->plural_class_name = "SDDs";
+        $header = SDD::generateHeader();
+        $output = SDD::generateOutput($this->getList());    
+        break;
       default:
         $this->single_class_name = "Object of Unknown Type";
         $this->plural_class_name = "Objects of Unknown Types";
@@ -133,6 +144,28 @@ class SelectForm extends FormBase {
       '#value' => $this->t('Delete Selected ' . $this->plural_class_name),
       '#name' => 'delete_element',
     ];
+    if ($this->element_type == "sdd") {
+      $form['download_sdd'] = [
+        '#type' => 'submit',
+        '#value' => $this->t('Download Selected ' . $this->single_class_name),
+        '#name' => 'download_sdd',
+      ];
+      $form['ingest_sdd'] = [
+        '#type' => 'submit',
+        '#value' => $this->t('Ingest Selected ' . $this->single_class_name),
+        '#name' => 'ingest_sdd',
+        '#attributes' => [
+          'class' => ['use-ajax'],
+          'data-dialog-type' => 'modal',
+          'data-dialog-options' => Json::encode(['width' => 700, 'height' => 400]),
+        ],  
+      ];
+      $form['uningest_sdd'] = [
+        '#type' => 'submit',
+        '#value' => $this->t('Uningest Selected ' . $this->plural_class_name),
+        '#name' => 'uningest_sdd',
+      ];  
+    }
     $form['element_table'] = [
       '#type' => 'tableselect',
       '#header' => $header,
@@ -188,6 +221,9 @@ class SelectForm extends FormBase {
       if ($this->element_type == 'semanticvariable') {
         $url = Url::fromRoute('sem.add_semantic_variable');
       } 
+      if ($this->element_type == 'sdd') {
+        $url = Url::fromRoute('sem.add_sdd');
+      } 
       $form_state->setRedirectUrl($url);
     }  
 
@@ -211,19 +247,72 @@ class SelectForm extends FormBase {
       if (sizeof($rows) <= 0) {
         \Drupal::messenger()->addMessage(t("At least one " . $this->single_class_name . " needs to be selected to be deleted."));      
       } else {
-        $fusekiAPIservice = \Drupal::service('sir.api_connector');
+        $api = \Drupal::service('rep.api_connector');
         foreach($rows as $uri) {
           if ($this->element_type == 'semanticvariable') {
-            $fusekiAPIservice->semanticVariableDel($uri);
+            $api->semanticVariableDel($uri);
+          } 
+          if ($this->element_type == 'sdd') {
+            $sdd = $api->parseObjectResponse($api->getUri($uri),'getUri');
+            if ($sdd != NULL && $sdd->dataFile != NULL) {
+
+              // DELETE FILE
+              if (isset($sdd->dataFile->id)) {
+                $file = File::load($sdd->dataFile->id);
+                if ($file) {
+                  $file->delete();
+                  \Drupal::messenger()->addMessage(t("Deleted file with following ID: ".$sdd->dataFile->id));      
+                }  
+              }
+
+              // DELETE DATAFILE
+              if (isset($sdd->dataFile->uri)) {
+                $api->dataFileDel($sdd->dataFile->uri);
+                \Drupal::messenger()->addMessage(t("Deleted DataFile with following URI: ".$sdd->dataFile->uri));      
+              }
+            }
+            // DELETE SDD
+            $api->sddDel($uri);
+            \Drupal::messenger()->addMessage(t("Deleted SDD with following URI: ".$sdd->uri));      
           } 
         }
         \Drupal::messenger()->addMessage(t("Selected " . $this->plural_class_name . " has/have been deleted successfully."));      
       }
     }  
 
+    // INGEST SDD
+    if ($button_name === 'ingest_sdd') {
+      if (sizeof($rows) < 1) {
+        \Drupal::messenger()->addWarning(t("Select the exact " . $this->single_class_name . " to be ingested."));      
+      } else if ((sizeof($rows) > 1)) {
+        \Drupal::messenger()->addWarning(t("No more than one " . $this->single_class_name . " can be ingested at once."));      
+      } else {
+        $api = \Drupal::service('rep.api_connector');
+        if ($this->element_type == 'sdd') {
+          $first = array_shift($rows);
+          $sdd = $api->parseObjectResponse($api->getUri($first),'getUri');
+          if ($sdd == NULL) {
+            \Drupal::messenger()->addMessage(t("Failed to retrieve datafile to be ingested."));
+            $form_state->setRedirectUrl(Utils::selectBackUrl('sdd'));
+            return;
+          } 
+          //dpm($sdd->dataFile->id);
+          $msg = $api->parseObjectResponse($api->uploadTemplate("sdd",$sdd),'uploadTemplate');
+          if ($msg == NULL) {
+            \Drupal::messenger()->addError(t("Selected " . $this->single_class_name . " FAILED to be submitted for ingestion."));      
+            $form_state->setRedirectUrl(Utils::selectBackUrl('sdd'));
+            return;
+          }
+          \Drupal::messenger()->addMessage(t("Selected " . $this->single_class_name . " has been submitted for ingestion."));      
+          $form_state->setRedirectUrl(Utils::selectBackUrl('sdd'));
+          return;
+        } 
+      }
+    }  
+
     // BACK TO MAIN PAGE
     if ($button_name === 'back') {
-      $url = Url::fromRoute('sem.index');
+      $url = Url::fromRoute('sem.search');
       $form_state->setRedirectUrl($url);
     }  
 

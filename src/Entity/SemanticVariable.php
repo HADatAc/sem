@@ -2,8 +2,8 @@
 
 namespace Drupal\sem\Entity;
 
-use Drupal\sem\Vocabulary\SEMGUI;
-use Drupal\sir\Utils;
+use Drupal\rep\Vocabulary\REPGUI;
+use Drupal\rep\Utils;
 
 class SemanticVariable {
 
@@ -12,6 +12,8 @@ class SemanticVariable {
     return $header = [
       'element_uri' => t('URI'),
       'element_name' => t('Name'),
+      'element_entity' => t('Entity'),
+      'element_attribute' => t('Attribute'),
     ];
   
   }
@@ -32,11 +34,21 @@ class SemanticVariable {
       if ($element->label != NULL) {
         $label = $element->label;
       }
+      $entityUri = ' ';
+      if ($element->entityUri != NULL && $element->entityUri != '') {
+        $entityUri = $element->entityLabel . ' (' . Utils::namespaceUri($element->entityUri) . ')';
+      }
+      $attributeUri = ' ';
+      if ($element->attributeUri != NULL && $element->attributeUri != '') {
+        $attributeUri = $element->attributeLabel . ' (' . Utils::namespaceUri($element->attributeUri) . ')';
+      }
       $root_url = \Drupal::request()->getBaseUrl();
       $encodedUri = rawurlencode(rawurlencode($element->uri));
       $output[$element->uri] = [
-        'element_uri' => t('<a href="'.$root_url.SEMGUI::DESCRIBE_PAGE.base64_encode($uri).'">'.$uri.'</a>'),     
-        'element_name' => t($label),     
+        'element_uri' => t('<a href="'.$root_url.REPGUI::DESCRIBE_PAGE.base64_encode($uri).'">'.$uri.'</a>'),     
+        'element_name' => t($label),    
+        'element_entity' => $entityUri,
+        'element_attribute' => $attributeUri, 
       ];
     }
     return $output;

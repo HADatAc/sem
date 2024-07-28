@@ -4,13 +4,13 @@ namespace Drupal\sem\Form;
 
 use Drupal\Core\Form\FormBase;
 use Drupal\Core\Form\FormStateInterface;
-use Drupal\sem\ListKeywordPage;
+use Drupal\rep\ListKeywordPage;
 use Drupal\sem\Entity\Attribute;
 use Drupal\sem\Entity\Entity;
 use Drupal\sem\Entity\SemanticVariable;
 use Drupal\sem\Entity\Unit;
 
-class ListForm extends FormBase {
+class SEMListForm extends FormBase {
 
   /**
    * {@inheritdoc}
@@ -134,7 +134,7 @@ class ListForm extends FormBase {
         'title' => ' ',
       ],
     ];
- 
+
     return $form;
   }
 
