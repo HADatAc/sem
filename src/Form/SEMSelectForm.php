@@ -10,6 +10,7 @@ use Drupal\file\Entity\File;
 use Drupal\rep\ListManagerEmailPage;
 use Drupal\rep\Utils;
 use Drupal\sem\Entity\SDD;
+use Drupal\sem\Entity\SemanticDataDictionary;
 use Drupal\sem\Entity\SemanticVariable;
 
 class SEMSelectForm extends FormBase {
@@ -109,6 +110,12 @@ class SEMSelectForm extends FormBase {
         $header = SemanticVariable::generateHeader();
         $output = SemanticVariable::generateOutput($this->getList());    
         break;
+      case "semanticdatadictionary":
+        $this->single_class_name = "Semantic Data Dictionary";
+        $this->plural_class_name = "Semantic Data Dictionary";
+        $header = SemanticDataDictionary::generateHeader();
+        $output = SemanticDataDictionary::generateOutput($this->getList());    
+        break;
       case "sdd":
         $this->single_class_name = "SDD";
         $this->plural_class_name = "SDDs";
@@ -207,6 +214,10 @@ class SEMSelectForm extends FormBase {
     $triggering_element = $form_state->getTriggeringElement();
     $button_name = $triggering_element['#name'];
   
+    // SET USER ID AND PREVIOUS URL FOR TRACKING STORE URLS
+    $uid = \Drupal::currentUser()->id();
+    $previousUrl = \Drupal::request()->getRequestUri();
+    
     // RETRIEVE SELECTED ROWS, IF ANY
     $selected_rows = $form_state->getValue('element_table');
     $rows = [];
@@ -219,10 +230,17 @@ class SEMSelectForm extends FormBase {
     // ADD ELEMENT
     if ($button_name === 'add_element') {
       if ($this->element_type == 'semanticvariable') {
+        Utils::trackingStoreUrls($uid, $previousUrl, 'sem.add_semantic_variable');
         $url = Url::fromRoute('sem.add_semantic_variable');
       } 
       if ($this->element_type == 'sdd') {
+        Utils::trackingStoreUrls($uid, $previousUrl, 'sem.add_sdd');
         $url = Url::fromRoute('sem.add_sdd');
+      } 
+      if ($this->element_type == 'semanticdatadictionary') {
+        Utils::trackingStoreUrls($uid, $previousUrl, 'sem.add_semantic_data_dictionary');
+        $url = Url::fromRoute('sem.add_semantic_data_dictionary');
+        $url->setRouteParameter('state', 'init');
       } 
       $form_state->setRedirectUrl($url);
     }  
@@ -236,6 +254,7 @@ class SEMSelectForm extends FormBase {
       } else {
         $first = array_shift($rows);
         if ($this->element_type == 'semanticvariable') {
+          Utils::trackingStoreUrls($uid, $previousUrl, 'sem.edit_semantic_variable');
           $url = Url::fromRoute('sem.edit_semantic_variable', ['semanticvariableuri' => base64_encode($first)]);
         } 
         $form_state->setRedirectUrl($url);
@@ -251,6 +270,9 @@ class SEMSelectForm extends FormBase {
         foreach($rows as $uri) {
           if ($this->element_type == 'semanticvariable') {
             $api->semanticVariableDel($uri);
+          } 
+          if ($this->element_type == 'semanticdatadictionary') {
+            $api->elementDel($this->element_type, $uri);
           } 
           if ($this->element_type == 'sdd') {
             $sdd = $api->parseObjectResponse($api->getUri($uri),'getUri');

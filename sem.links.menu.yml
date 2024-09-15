@@ -33,6 +33,21 @@ sem.manage_semantic_variable:
     _permission: 'access content'
     _role: 'authenticated'
 
+sem.manage_semantic_data_dictionary:
+  title: Manage Semantic Data Dictionary
+  description: Manage Semantic Data Dictionary
+  route_name: sem.select_element
+  route_parameters:
+    elementtype: 'semanticdatadictionary'
+    page: '1'
+    pagesize: '10'
+  parent: std.top_level
+  menu_name: main
+  weight: 27
+  requirements:
+    _permission: 'access content'
+    _role: 'authenticated'
+
 
 #sem.semantic_data_dictionary:
 #  title: Manage Semantic Data Dictionary

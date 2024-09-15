@@ -7,6 +7,14 @@ sem_js_css:
     - core/jquery
     - core/drupal
     - core/jquery.once
+sem_list:
+  version: VERSION
+#  css:
+#    css/rep_tree.css: {}
+  js:
+    js/sem_list.js: {}
+  dependencies:
+    - core/jquery
 #fontawesome5:
 #  version: 1.0
 #  css:
