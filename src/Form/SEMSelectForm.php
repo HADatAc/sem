@@ -257,6 +257,13 @@ class SEMSelectForm extends FormBase {
           Utils::trackingStoreUrls($uid, $previousUrl, 'sem.edit_semantic_variable');
           $url = Url::fromRoute('sem.edit_semantic_variable', ['semanticvariableuri' => base64_encode($first)]);
         } 
+        if ($this->element_type == 'semanticdatadictionary') {
+          Utils::trackingStoreUrls($uid, $previousUrl, 'sem.edit_semantic_data_dictionary');
+          $url = Url::fromRoute('sem.edit_semantic_data_dictionary', [
+            'state' => 'init', // TODO
+            'uri' => base64_encode($first)
+          ]);
+        } 
         $form_state->setRedirectUrl($url);
       } 
     }

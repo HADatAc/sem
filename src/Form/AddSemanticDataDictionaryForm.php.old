@@ -49,7 +49,6 @@ class AddSemanticDataDictionaryForm extends FormBase {
       \Drupal::state()->delete('my_form_basic');
       \Drupal::state()->delete('my_form_variables');
       \Drupal::state()->delete('my_form_objects');
-      \Drupal::state()->delete('my_form_codes');
       $state = 'basic';
     } else {
       $basic = \Drupal::state()->get('my_form_basic') ?? [
@@ -59,7 +58,6 @@ class AddSemanticDataDictionaryForm extends FormBase {
       ];;
       $variables = \Drupal::state()->get('my_form_variables') ?? [];
       $objects = \Drupal::state()->get('my_form_objects') ?? []; 
-      $codes = \Drupal::state()->get('my_form_codes') ?? [];
     }
     $this->setState($state);
 
@@ -163,7 +161,7 @@ class AddSemanticDataDictionaryForm extends FormBase {
 
       $form['variables_title'] = [
         '#type' => 'markup',
-        '#markup' => 'Variables',
+        '#markup' => 'variables',
       ];
 
       $form['variables'] = array(
@@ -268,64 +266,6 @@ class AddSemanticDataDictionaryForm extends FormBase {
 
     }
 
-    /* ======================= CODEBOOK ======================= */
-
-    if ($this->getState() == 'codebook') {
-
-      /* 
-      *      CODES
-      */
-
-      $form['codes_title'] = [
-        '#type' => 'markup',
-        '#markup' => 'Codes',
-      ];
-
-      $form['codes'] = array(
-        '#type' => 'container',
-        '#title' => $this->t('codes'),
-        '#attributes' => array(
-          'class' => array('p-3', 'bg-light', 'text-dark', 'row', 'border', 'border-secondary', 'rounded'),
-          'id' => 'custom-table-wrapper',
-        ),
-      );
-    
-      $form['codes']['header'] = array(
-        '#type' => 'markup',
-        '#markup' => 
-          '<div class="p-2 col bg-secondary text-white border border-white">Column</div>' . 
-          '<div class="p-2 col bg-secondary text-white border border-white">Code</div>' . 
-          '<div class="p-2 col bg-secondary text-white border border-white">Label</div>' . 
-          '<div class="p-2 col bg-secondary text-white border border-white">Class</div>' . 
-          '<div class="p-2 col-md-1 bg-secondary text-white border border-white">Operations</div>' . $separator,
-      );
-      
-      $form['codes']['rows'] = $this->renderCodeRows($codes);
-
-      $form['codes']['space_3'] = [
-        '#type' => 'markup',
-        '#markup' => $separator,
-      ];
-
-      $form['codes']['actions']['top'] = array(
-        '#type' => 'markup',
-        '#markup' => '<div class="p-3 col">',
-      );
-
-      $form['codes']['actions']['add_row'] = [
-        '#type' => 'submit',
-        '#value' => $this->t('New Code'),
-        '#name' => 'new_code',
-        '#attributes' => array('class' => array('btn', 'btn-sm')),
-      ];
-
-      $form['codes']['actions']['bottom'] = array(
-        '#type' => 'markup',
-        '#markup' => '</div>' . $separator,
-      );
-
-    }
-
     /* ======================= COMMON BOTTOM ======================= */
 
     $form['space'] = [
@@ -387,12 +327,6 @@ class AddSemanticDataDictionaryForm extends FormBase {
       $objects = \Drupal::state()->get('my_form_objects');
       if ($objects) {
         $this->updateObjectRows($form_state, $objects);
-      }
-    }
-    if ($currentState == 'codebook') {
-      $codes = \Drupal::state()->get('my_form_codes');
-      if ($codes) {
-        $this->updateCodeRows($form_state, $codes);
       }
     }
 
@@ -990,226 +924,6 @@ class AddSemanticDataDictionaryForm extends FormBase {
     return;
   }
   
-  /******************************
-   *  
-   *    CODE'S FUNCTIONS
-   * 
-   ******************************/
-
-   protected function renderCodeRows(array $codes) {
-    $form_rows = [];
-    $separator = '<div class="w-100"></div>';
-    foreach ($codes as $delta => $code) {
-
-      $form_row = array(
-        'column' => array(
-          'top' => array(
-            '#type' => 'markup',
-            '#markup' => '<div class="pt-3 col border border-white">',
-          ),
-          'main' => array(
-            '#type' => 'textfield',
-            '#name' => 'code_column_' . $delta,
-            '#value' => $code['column'],
-          ),  
-          'bottom' => array(
-            '#type' => 'markup',
-            '#markup' => '</div>',
-          ),
-        ),  
-        'code' => array(
-          'top' => array(
-            '#type' => 'markup',
-            '#markup' => '<div class="pt-3 col border border-white">',
-          ),  
-          'main' => array(
-            '#type' => 'textfield',
-            '#name' => 'code_code_' . $delta,
-            '#value' => $code['code'],
-          ),
-          'bottom' => array(
-            '#type' => 'markup',
-            '#markup' => '</div>',
-          ),
-        ),
-        'label' => array(
-          'top' => array(
-            '#type' => 'markup',
-            '#markup' => '<div class="pt-3 col border border-white">',
-          ),
-          'main' => array(
-            '#type' => 'textfield',
-            '#name' => 'code_label_' . $delta,
-            '#value' => $code['label'],
-          ),  
-          'bottom' => array(
-            '#type' => 'markup',
-            '#markup' => '</div>',
-          ),
-        ),  
-        'class' => array(
-          'top' => array(
-            '#type' => 'markup',
-            '#markup' => '<div class="pt-3 col border border-white">',
-          ),  
-          'main' => array(
-            '#type' => 'textfield',
-            '#name' => 'code_class_' . $delta,
-            '#value' => $code['class'],
-          ),
-          'bottom' => array(
-            '#type' => 'markup',
-            '#markup' => '</div>',
-          ),
-        ),
-        'operations' => array(
-          'top' => array(
-            '#type' => 'markup',
-            '#markup' => '<div class="pt-3 col-md-1 border border-white">',
-          ),  
-          'main' => array(
-            '#type' => 'submit',
-            '#name' => 'code_remove_' . $delta,
-            '#value' => $this->t('Remove'),
-            '#attributes' => array(
-              'class' => array('remove-row', 'btn', 'btn-sm'),
-              'id' => 'code-' . $delta,
-            ),
-          ),
-          'bottom' => array(
-            '#type' => 'markup',
-            '#markup' => '</div>' . $separator,
-          ),
-        ),
-      );
-
-      $rowId = 'row' . $delta;
-      $form_rows[] = [
-        $rowId => $form_row,
-      ];
-
-    }
-    return $form_rows;
-  }
-
-  protected function updateCodeRows(FormStateInterface $form_state, array $codes) {
-    $input = $form_state->getUserInput();
-    if (isset($input) && is_array($input) && 
-        isset($codes) && is_array($codes)) {
-          
-      foreach ($codes as $code_id => $code) {
-        if (isset($code_id) && isset($code)) {
-          $codes[$code_id]['column']  = $input['code_column_' . $code_id] ?? '';
-          $codes[$code_id]['code']    = $input['code_code_' . $code_id] ?? '';
-          $codes[$code_id]['label']   = $input['code_label_' . $code_id] ?? '';
-          $codes[$code_id]['class']   = $input['code_class_' . $code_id] ?? '';
-        }
-      }      
-      \Drupal::state()->set('my_form_codes', $codes);
-    }
-    return;
-  }
-  
-  protected function saveCodes($semanticDataDictionaryUri, array $codes) {
-    if (!isset($semanticDataDictionaryUri)) {
-      \Drupal::messenger()->addError(t("No semantic data dictionary's URI have been provided to save possible values."));
-      return;
-    } 
-    if (!isset($codes) || !is_array($codes)) {
-      \Drupal::messenger()->addWarning(t("Semantic data dictionary has no possible values to be saved."));
-      return;
-    }
- 
-    foreach ($codes as $code_id => $code) {
-      if (isset($code_id) && isset($code)) {
-        try {
-          $useremail = \Drupal::currentUser()->getEmail();
-
-          $column = ' ';
-          if ($codes[$code_id]['column'] != NULL && $codes[$code_id]['column'] != '') {
-            $column = $codes[$code_id]['column'];
-          } 
-
-          $codeStr = ' ';
-          if ($codes[$code_id]['code'] != NULL && $codes[$code_id]['code'] != '') {
-            $codeStr = $codes[$code_id]['code'];
-          } 
-
-          $codeLabel = ' ';
-          if ($codes[$code_id]['label'] != NULL && $codes[$code_id]['label'] != '') {
-            $codeLabel = $codes[$code_id]['label'];
-          } 
-
-          $class = ' ';
-          if ($codes[$code_id]['class'] != NULL && $codes[$code_id]['class'] != '') {
-            $unitUri = $codes[$code_id]['class'];
-          } 
-
-          $codeUri = str_replace(
-            Constant::PREFIX_SEMANTIC_DATA_DICTIONARY, 
-            Constant::PREFIX_POSSIBLE_VALUE,
-            $semanticDataDictionaryUri) . '/' . $code_id;
-          $codeJSON = '{"uri":"'. $codeUri .'",'.
-              '"superUri":"'.HASCO::POSSIBLE_VALUE.'",'.
-              '"hascoTypeUri":"'.HASCO::POSSIBLE_VALUE.'",'.
-              '"partOfSchema":"'.$semanticDataDictionaryUri.'",'.
-              '"label":"'.$column.'",'.
-              '"hasCode":"' . $codeStr . '",' .
-              '"hasCodeLabel":"' . $codeLabel . '",' . 
-              '"hasClass":"' . $class . '",' . 
-              '"comment":"Possible value ' . $column . ' of ' . $column . ' of SDD ' . $semanticDataDictionaryUri . '",'.
-              '"hasSIRManagerEmail":"'.$useremail.'"}';
-          $api = \Drupal::service('rep.api_connector');
-          $api->elementAdd('possiblevalue',$codeJSON);
-
-          //dpm($codeJSON);
-
-        } catch(\Exception $e){
-          \Drupal::messenger()->addError(t("An error occurred while saving possible value(s): ".$e->getMessage()));
-        }
-      }
-    }      
-    return;
-  }
-  
-  public function addCodeRow() {
-    $codes = \Drupal::state()->get('my_form_codes') ?? [];
-
-    // Add a new row to the table.
-    $codes[] = [
-      'column' => '', 
-      'code' => '', 
-      'label' => '', 
-      'class' => '',
-    ];
-    \Drupal::state()->set('my_form_codes', $codes);
-  
-    // Rebuild the table rows.
-    $form['codes']['rows'] = $this->renderCodeRows($codes);
-    return;
-  }  
-
-  public function removeCodeRow($button_name) {
-    $codes = \Drupal::state()->get('my_form_codes') ?? [];
-  
-    // from button name's value, determine which row to remove.
-    $parts = explode('_', $button_name);
-    $code_to_remove = (isset($parts) && is_array($parts)) ? (int) (end($parts)) : null;
-
-    if (isset($code_to_remove) && $code_to_remove > -1) {
-      unset($codes[$code_to_remove]);
-      $codes = array_values($codes);
-      \Drupal::state()->set('my_form_codes', $codes);
-    }
-    return;
-  }
-  
-  /* ================================================================================ *
-   * 
-   *                                 SUBMIT FORM
-   * 
-   * ================================================================================ */ 
-
   /**
    * {@inheritdoc}
    */
@@ -1240,11 +954,6 @@ class AddSemanticDataDictionaryForm extends FormBase {
       $this->updateObjectRows($form_state, $objects);
     }
     $objects = \Drupal::state()->get('my_form_objects');
-    $codes = \Drupal::state()->get('my_form_codes');
-    if ($codes) {
-      $this->updateCodeRows($form_state, $codes);
-    }
-    $codes = \Drupal::state()->get('my_form_codes');
 
     if ($button_name === 'new_variable') {
       $this->addVariableRow();
@@ -1263,16 +972,6 @@ class AddSemanticDataDictionaryForm extends FormBase {
 
     if (str_starts_with($button_name,'object_remove_')) {
       $this->removeObjectRow($button_name);
-      return;
-    } 
-
-    if ($button_name === 'new_code') {
-      $this->addCodeRow();
-      return;
-    } 
-
-    if (str_starts_with($button_name,'code_remove_')) {
-      $this->removeCodeRow($button_name);
       return;
     } 
 
@@ -1297,14 +996,10 @@ class AddSemanticDataDictionaryForm extends FormBase {
         if (isset($objects)) {
           $this->saveObjects($newSemanticDataDictionaryUri,$objects);
         }
-        if (isset($codes)) {
-          $this->saveCodes($newSemanticDataDictionaryUri,$codes);
-        }
 
         \Drupal::state()->delete('my_form_basic');
         \Drupal::state()->delete('my_form_variables');
         \Drupal::state()->delete('my_form_objects');
-        \Drupal::state()->delete('my_form_codes');
 
         \Drupal::messenger()->addMessage(t("Semantic Data Dictionary has been added successfully."));      
         self::backUrl();

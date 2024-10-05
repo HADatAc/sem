@@ -14,9 +14,11 @@ use Drupal\rep\Utils;
 use Drupal\rep\Vocabulary\HASCO;
 use Drupal\rep\Vocabulary\REPGUI;
 
-class AddSemanticDataDictionaryForm extends FormBase {
+class EditSemanticDataDictionaryForm extends FormBase {
 
   protected $state;
+
+  protected $semanticDataDictionary;
 
   public function getState() {
     return $this->state;
@@ -25,18 +27,39 @@ class AddSemanticDataDictionaryForm extends FormBase {
     return $this->state = $state; 
   }
 
-  /**
-   * {@inheritdoc}
-   */
-  public function getFormId() {
-    return 'add_semantic_data_dictionary_form';
+  public function getSemanticDataDictionary() {
+    return $this->semanticDataDictionary;
+  }
+  public function setSemanticDataDictionary($semanticDataDictionary) {
+    return $this->semanticDataDictionary = $semanticDataDictionary; 
   }
 
   /**
    * {@inheritdoc}
    */
-  public function buildForm(array $form, FormStateInterface $form_state, $state=NULL) {
+  public function getFormId() {
+    return 'edit_semantic_data_dictionary_form';
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  public function buildForm(array $form, FormStateInterface $form_state, $state=NULL, $uri=NULL) {
     
+    // READ SEMANTIC_DATA_DICTIONARY
+    $api = \Drupal::service('rep.api_connector');
+    $uri_decode=base64_decode($uri);
+    $semanticDataDictionary = $api->parseObjectResponse($api->getUri($uri_decode),'getUri');
+    if ($semanticDataDictionary == NULL) {
+      \Drupal::messenger()->addMessage(t("Failed to retrieve Semantic Data Dictionary."));
+      self::backUrl();
+      return;
+    } else {
+      $this->setSemanticDataDictionary($semanticDataDictionary);
+    }
+
+    //dpm($semanticDataDictionary);
+
     // SET STATE, VARIABLES AND OBJECTS
     if (isset($state) && $state === 'init') {
       $basic = [
@@ -51,12 +74,17 @@ class AddSemanticDataDictionaryForm extends FormBase {
       \Drupal::state()->delete('my_form_objects');
       \Drupal::state()->delete('my_form_codes');
       $state = 'basic';
-    } else {
+    } else if ($this->getSemanticDataDictionary() != NULL) {
+      $basic = $this->populateBasic();
+      $variables = $this->populateVariables();
+      $objects = $this->populateObjects();
+      $codes = $this->populateCodes(); 
+    } else { 
       $basic = \Drupal::state()->get('my_form_basic') ?? [
         'name' => '',
         'version' => '',
         'description' => '',
-      ];;
+      ];
       $variables = \Drupal::state()->get('my_form_variables') ?? [];
       $objects = \Drupal::state()->get('my_form_objects') ?? []; 
       $codes = \Drupal::state()->get('my_form_codes') ?? [];
@@ -68,7 +96,7 @@ class AddSemanticDataDictionaryForm extends FormBase {
 
     $form['semantic_data_dictionary_title'] = [
       '#type' => 'markup',
-      '#markup' => '<h3>Add Semantic Data Dictionary</h3><br>',
+      '#markup' => '<h3>Edit Semantic Data Dictionary</h3><br>',
     ];
 
     $form['current_state'] = [
@@ -403,7 +431,7 @@ class AddSemanticDataDictionaryForm extends FormBase {
   
     // BUILD NEW URL
     $root_url = \Drupal::request()->getBaseUrl();
-    $newUrl = $root_url . REPGUI::ADD_SEMANTIC_DATA_DICTIONARY . $state;
+    $newUrl = $root_url . REPGUI::EDIT_SEMANTIC_DATA_DICTIONARY . $state . '/' . base64_encode($this->semanticDataDictionary->uri);
   
     // REDIRECT TO NEW URL
     $response = new AjaxResponse();
@@ -441,6 +469,16 @@ class AddSemanticDataDictionaryForm extends FormBase {
     return $response;
   }
   
+  public function populateBasic() {
+    $basic = [
+      'name' => $this->getSemanticDataDictionary()->label,
+      'version' => $this->getSemanticDataDictionary()->version,
+      'description' => $this->getSemanticDataDictionary()->comment,      
+    ];
+    \Drupal::state()->set('my_form_basic', $basic);
+    return $basic;
+  }
+
   /******************************
    *  
    *    variables' FUNCTIONS
@@ -609,6 +647,21 @@ class AddSemanticDataDictionaryForm extends FormBase {
       \Drupal::state()->set('my_form_variables', $variables);
     }
     return;
+  }
+  
+  protected function populateVariables() {
+    $variables = [];
+    $attributes = $this->getSemanticDataDictionary()->attributes;
+    if (count($attributes) > 0) {
+      foreach ($attributes as $attribute_id => $attribute) {
+        if (isset($attribute_id) && isset($attribute)) {
+          $variables[$attribute_id] = $attribute;
+        }
+      }
+    }      
+    \Drupal::state()->set('my_form_variables', $variables);
+    
+    return $variables;
   }
   
   protected function saveVariables($semanticDataDictionaryUri, array $variables) {
@@ -879,6 +932,21 @@ class AddSemanticDataDictionaryForm extends FormBase {
     return;
   }
   
+  protected function populateObjects() {
+    $objects = [];
+    $objs = $this->getSemanticDataDictionary()->objects;
+    if (count($objs) > 0) {
+      foreach ($objs as $obj_id => $obj) {
+        if (isset($obj_id) && isset($obj)) {
+          $objets[$obj_id] = $obj;
+        }
+      }
+    }      
+    \Drupal::state()->set('my_form_objects', $objects);
+    
+    return $objects;
+  }
+  
   protected function saveObjects($semanticDataDictionaryUri, array $objects) {
     if (!isset($semanticDataDictionaryUri)) {
       \Drupal::messenger()->addError(t("No semantic data dictionary's URI have been provided to save objects."));
@@ -999,6 +1067,7 @@ class AddSemanticDataDictionaryForm extends FormBase {
    protected function renderCodeRows(array $codes) {
     $form_rows = [];
     $separator = '<div class="w-100"></div>';
+    dpm($codes);
     foreach ($codes as $delta => $code) {
 
       $form_row = array(
@@ -1010,7 +1079,7 @@ class AddSemanticDataDictionaryForm extends FormBase {
           'main' => array(
             '#type' => 'textfield',
             '#name' => 'code_column_' . $delta,
-            '#value' => $code['column'],
+            '#default_value' => $code['column'],
           ),  
           'bottom' => array(
             '#type' => 'markup',
@@ -1025,7 +1094,7 @@ class AddSemanticDataDictionaryForm extends FormBase {
           'main' => array(
             '#type' => 'textfield',
             '#name' => 'code_code_' . $delta,
-            '#value' => $code['code'],
+            '#default_value' => $code['code'],
           ),
           'bottom' => array(
             '#type' => 'markup',
@@ -1040,7 +1109,7 @@ class AddSemanticDataDictionaryForm extends FormBase {
           'main' => array(
             '#type' => 'textfield',
             '#name' => 'code_label_' . $delta,
-            '#value' => $code['label'],
+            '#default_value' => $code['label'],
           ),  
           'bottom' => array(
             '#type' => 'markup',
@@ -1055,7 +1124,7 @@ class AddSemanticDataDictionaryForm extends FormBase {
           'main' => array(
             '#type' => 'textfield',
             '#name' => 'code_class_' . $delta,
-            '#value' => $code['class'],
+            '#default_value' => $code['class'],
           ),
           'bottom' => array(
             '#type' => 'markup',
@@ -1108,6 +1177,21 @@ class AddSemanticDataDictionaryForm extends FormBase {
       \Drupal::state()->set('my_form_codes', $codes);
     }
     return;
+  }
+  
+  protected function populateCodes() {
+    $codes = [];
+    $possibleValues = $this->getSemanticDataDictionary()->possibleValues;
+    if (count($possibleValues) > 0) {
+      foreach ($possibleValues as $possibleValue_id => $possibleValue) {
+        if (isset($possibleValue_id) && isset($possibleValue)) {
+          $codes[$possibleValue_id] = $possibleValue;
+        }
+      }
+    }      
+    \Drupal::state()->set('my_form_codes', $codes);
+    
+    return $codes;
   }
   
   protected function saveCodes($semanticDataDictionaryUri, array $codes) {
@@ -1321,7 +1405,7 @@ class AddSemanticDataDictionaryForm extends FormBase {
 
   function backUrl() {
     $uid = \Drupal::currentUser()->id();
-    $previousUrl = Utils::trackingGetPreviousUrl($uid, 'sem.add_semantic_data_dictionary');
+    $previousUrl = Utils::trackingGetPreviousUrl($uid, 'sem.edit_semantic_data_dictionary');
     if ($previousUrl) {
       $response = new RedirectResponse($previousUrl);
       $response->send();

@@ -13,12 +13,15 @@ class SemanticDataDictionary {
       'element_uri' => t('URI'),
       'element_name' => t('Name'),
       'element_version' => t('Version'),
+      'element_tot_variables' => t('#Variables'),
+      'element_tot_objects' => t('#Objects'),
+      'element_tot_codes' => t('#Codes'),
     ];
   
   }
 
   public static function generateOutput($list) {
-
+    
     // ROOT URL
     $root_url = \Drupal::request()->getBaseUrl();
 
@@ -43,7 +46,10 @@ class SemanticDataDictionary {
         'element_uri' => t('<a href="'.$root_url.REPGUI::DESCRIBE_PAGE.base64_encode($uri).'">'.$uri.'</a>'),     
         'element_name' => t($label),    
         'element_version' => t($version),    
-      ];
+        'element_tot_variables' => $element->totalVariables,
+        'element_tot_objects' => $element->totalObjects,
+        'element_tot_codes' => $element->totalCodes,
+        ];
     }
     return $output;
 

@@ -110,6 +110,16 @@ sem.add_semantic_data_dictionary:
   options:
     no_cache: 'TRUE'
 
+sem.edit_semantic_data_dictionary:
+  path: 'sem/manage/editsemanticdatadictionary/{state}/{uri}'
+  defaults:
+    _form: '\Drupal\sem\Form\EditSemanticDataDictionaryForm'
+  requirements:
+    _permission: 'access content'
+    _custom_access_check: 'TRUE'    
+  options:
+    no_cache: 'TRUE'
+
 # AUTOCOMPLETE
 
 sem.semanticvariable_entity_autocomplete:
