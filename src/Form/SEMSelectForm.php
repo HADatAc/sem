@@ -41,7 +41,7 @@ class SEMSelectForm extends FormBase {
   }
 
   public function setList($list) {
-    return $this->list = $list; 
+    return $this->list = $list;
   }
 
   public function getListSize() {
@@ -49,7 +49,7 @@ class SEMSelectForm extends FormBase {
   }
 
   public function setListSize($list_size) {
-    return $this->list_size = $list_size; 
+    return $this->list_size = $list_size;
   }
 
   /**
@@ -63,7 +63,7 @@ class SEMSelectForm extends FormBase {
     $user = \Drupal\user\Entity\User::load($uid);
     $this->manager_name = $user->name->value;
 
-    
+
     // GET TOTAL NUMBER OF ELEMENTS AND TOTAL NUMBER OF PAGES
     $this->element_type = $elementtype;
     $this->setListSize(-1);
@@ -72,7 +72,7 @@ class SEMSelectForm extends FormBase {
     }
     if (gettype($this->list_size) == 'string') {
       $total_pages = "0";
-    } else { 
+    } else {
       if ($this->list_size % $pagesize == 0) {
         $total_pages = $this->list_size / $pagesize;
       } else {
@@ -108,19 +108,19 @@ class SEMSelectForm extends FormBase {
         $this->single_class_name = "Semantic Variable";
         $this->plural_class_name = "Semantic Variables";
         $header = SemanticVariable::generateHeader();
-        $output = SemanticVariable::generateOutput($this->getList());    
+        $output = SemanticVariable::generateOutput($this->getList());
         break;
       case "semanticdatadictionary":
         $this->single_class_name = "Semantic Data Dictionary";
         $this->plural_class_name = "Semantic Data Dictionary";
         $header = SemanticDataDictionary::generateHeader();
-        $output = SemanticDataDictionary::generateOutput($this->getList());    
+        $output = SemanticDataDictionary::generateOutput($this->getList());
         break;
       case "sdd":
         $this->single_class_name = "SDD";
         $this->plural_class_name = "SDDs";
         $header = SDD::generateHeader();
-        $output = SDD::generateOutput($this->getList());    
+        $output = SDD::generateOutput($this->getList());
         break;
       default:
         $this->single_class_name = "Object of Unknown Type";
@@ -140,38 +140,53 @@ class SEMSelectForm extends FormBase {
       '#type' => 'submit',
       '#value' => $this->t('Add New ' . $this->single_class_name),
       '#name' => 'add_element',
+      '#attributes' => [
+        'class' => ['btn', 'btn-primary', 'add-element-button'],
+      ],
     ];
     $form['edit_selected_element'] = [
       '#type' => 'submit',
       '#value' => $this->t('Edit Selected ' . $this->single_class_name),
       '#name' => 'edit_element',
+      '#attributes' => [
+        'class' => ['btn', 'btn-primary', 'edit-element-button'],
+      ],
     ];
     $form['delete_selected_element'] = [
       '#type' => 'submit',
       '#value' => $this->t('Delete Selected ' . $this->plural_class_name),
       '#name' => 'delete_element',
+      '#attributes' => [
+        'class' => ['btn', 'btn-primary', 'delete-element-button'],
+      ],
     ];
     if ($this->element_type == "sdd") {
       $form['download_sdd'] = [
         '#type' => 'submit',
         '#value' => $this->t('Download Selected ' . $this->single_class_name),
         '#name' => 'download_sdd',
+        '#attributes' => [
+          'class' => ['btn', 'btn-primary', 'download-button'],
+        ],
       ];
       $form['ingest_sdd'] = [
         '#type' => 'submit',
         '#value' => $this->t('Ingest Selected ' . $this->single_class_name),
         '#name' => 'ingest_sdd',
         '#attributes' => [
-          'class' => ['use-ajax'],
+          'class' => ['use-ajax', 'btn', 'btn-primary', 'ingest_mt-button'],
           'data-dialog-type' => 'modal',
           'data-dialog-options' => Json::encode(['width' => 700, 'height' => 400]),
-        ],  
+        ],
       ];
       $form['uningest_sdd'] = [
         '#type' => 'submit',
         '#value' => $this->t('Uningest Selected ' . $this->plural_class_name),
         '#name' => 'uningest_sdd',
-      ];  
+        '#attributes' => [
+          'class' => ['btn', 'btn-primary', 'uningest_mt-button'],
+        ],
+      ];
     }
     $form['element_table'] = [
       '#type' => 'tableselect',
@@ -197,27 +212,30 @@ class SEMSelectForm extends FormBase {
       '#type' => 'submit',
       '#value' => $this->t('Back'),
       '#name' => 'back',
+      '#attributes' => [
+        'class' => ['btn', 'btn-primary', 'back-button'],
+      ],
     ];
     $form['space'] = [
       '#type' => 'item',
       '#value' => $this->t('<br><br><br>'),
     ];
- 
+
     return $form;
   }
 
   /**
    * {@inheritdoc}
-   */   
+   */
   public function submitForm(array &$form, FormStateInterface $form_state) {
     // RETRIEVE TRIGGERING BUTTON
     $triggering_element = $form_state->getTriggeringElement();
     $button_name = $triggering_element['#name'];
-  
+
     // SET USER ID AND PREVIOUS URL FOR TRACKING STORE URLS
     $uid = \Drupal::currentUser()->id();
     $previousUrl = \Drupal::request()->getRequestUri();
-    
+
     // RETRIEVE SELECTED ROWS, IF ANY
     $selected_rows = $form_state->getValue('element_table');
     $rows = [];
@@ -232,55 +250,55 @@ class SEMSelectForm extends FormBase {
       if ($this->element_type == 'semanticvariable') {
         Utils::trackingStoreUrls($uid, $previousUrl, 'sem.add_semantic_variable');
         $url = Url::fromRoute('sem.add_semantic_variable');
-      } 
+      }
       if ($this->element_type == 'sdd') {
         Utils::trackingStoreUrls($uid, $previousUrl, 'sem.add_sdd');
         $url = Url::fromRoute('sem.add_sdd');
-      } 
+      }
       if ($this->element_type == 'semanticdatadictionary') {
         Utils::trackingStoreUrls($uid, $previousUrl, 'sem.add_semantic_data_dictionary');
         $url = Url::fromRoute('sem.add_semantic_data_dictionary');
         $url->setRouteParameter('state', 'init');
-      } 
+      }
       $form_state->setRedirectUrl($url);
-    }  
+    }
 
     // EDIT ELEMENT
     if ($button_name === 'edit_element') {
       if (sizeof($rows) < 1) {
-        \Drupal::messenger()->addMessage(t("Select the exact " . $this->single_class_name . " to be edited."));      
+        \Drupal::messenger()->addMessage(t("Select the exact " . $this->single_class_name . " to be edited."));
       } else if ((sizeof($rows) > 1)) {
-        \Drupal::messenger()->addMessage(t("No more than one " . $this->single_class_name . " can be edited at once."));      
+        \Drupal::messenger()->addMessage(t("No more than one " . $this->single_class_name . " can be edited at once."));
       } else {
         $first = array_shift($rows);
         if ($this->element_type == 'semanticvariable') {
           Utils::trackingStoreUrls($uid, $previousUrl, 'sem.edit_semantic_variable');
           $url = Url::fromRoute('sem.edit_semantic_variable', ['semanticvariableuri' => base64_encode($first)]);
-        } 
+        }
         if ($this->element_type == 'semanticdatadictionary') {
           Utils::trackingStoreUrls($uid, $previousUrl, 'sem.edit_semantic_data_dictionary');
           $url = Url::fromRoute('sem.edit_semantic_data_dictionary', [
             'state' => 'init', // TODO
             'uri' => base64_encode($first)
           ]);
-        } 
+        }
         $form_state->setRedirectUrl($url);
-      } 
+      }
     }
 
     // DELETE ELEMENT
     if ($button_name === 'delete_element') {
       if (sizeof($rows) <= 0) {
-        \Drupal::messenger()->addMessage(t("At least one " . $this->single_class_name . " needs to be selected to be deleted."));      
+        \Drupal::messenger()->addMessage(t("At least one " . $this->single_class_name . " needs to be selected to be deleted."));
       } else {
         $api = \Drupal::service('rep.api_connector');
         foreach($rows as $uri) {
           if ($this->element_type == 'semanticvariable') {
             $api->semanticVariableDel($uri);
-          } 
+          }
           if ($this->element_type == 'semanticdatadictionary') {
             $api->elementDel($this->element_type, $uri);
-          } 
+          }
           if ($this->element_type == 'sdd') {
             $sdd = $api->parseObjectResponse($api->getUri($uri),'getUri');
             if ($sdd != NULL && $sdd->dataFile != NULL) {
@@ -290,31 +308,31 @@ class SEMSelectForm extends FormBase {
                 $file = File::load($sdd->dataFile->id);
                 if ($file) {
                   $file->delete();
-                  \Drupal::messenger()->addMessage(t("Deleted file with following ID: ".$sdd->dataFile->id));      
-                }  
+                  \Drupal::messenger()->addMessage(t("Deleted file with following ID: ".$sdd->dataFile->id));
+                }
               }
 
               // DELETE DATAFILE
               if (isset($sdd->dataFile->uri)) {
                 $api->dataFileDel($sdd->dataFile->uri);
-                \Drupal::messenger()->addMessage(t("Deleted DataFile with following URI: ".$sdd->dataFile->uri));      
+                \Drupal::messenger()->addMessage(t("Deleted DataFile with following URI: ".$sdd->dataFile->uri));
               }
             }
             // DELETE SDD
             $api->sddDel($uri);
-            \Drupal::messenger()->addMessage(t("Deleted SDD with following URI: ".$sdd->uri));      
-          } 
+            \Drupal::messenger()->addMessage(t("Deleted SDD with following URI: ".$sdd->uri));
+          }
         }
-        \Drupal::messenger()->addMessage(t("Selected " . $this->plural_class_name . " has/have been deleted successfully."));      
+        \Drupal::messenger()->addMessage(t("Selected " . $this->plural_class_name . " has/have been deleted successfully."));
       }
-    }  
+    }
 
     // INGEST SDD
     if ($button_name === 'ingest_sdd') {
       if (sizeof($rows) < 1) {
-        \Drupal::messenger()->addWarning(t("Select the exact " . $this->single_class_name . " to be ingested."));      
+        \Drupal::messenger()->addWarning(t("Select the exact " . $this->single_class_name . " to be ingested."));
       } else if ((sizeof($rows) > 1)) {
-        \Drupal::messenger()->addWarning(t("No more than one " . $this->single_class_name . " can be ingested at once."));      
+        \Drupal::messenger()->addWarning(t("No more than one " . $this->single_class_name . " can be ingested at once."));
       } else {
         $api = \Drupal::service('rep.api_connector');
         if ($this->element_type == 'sdd') {
@@ -324,27 +342,27 @@ class SEMSelectForm extends FormBase {
             \Drupal::messenger()->addMessage(t("Failed to retrieve datafile to be ingested."));
             $form_state->setRedirectUrl(Utils::selectBackUrl('sdd'));
             return;
-          } 
+          }
           //dpm($sdd->dataFile->id);
           $msg = $api->parseObjectResponse($api->uploadTemplate("sdd",$sdd),'uploadTemplate');
           if ($msg == NULL) {
-            \Drupal::messenger()->addError(t("Selected " . $this->single_class_name . " FAILED to be submitted for ingestion."));      
+            \Drupal::messenger()->addError(t("Selected " . $this->single_class_name . " FAILED to be submitted for ingestion."));
             $form_state->setRedirectUrl(Utils::selectBackUrl('sdd'));
             return;
           }
-          \Drupal::messenger()->addMessage(t("Selected " . $this->single_class_name . " has been submitted for ingestion."));      
+          \Drupal::messenger()->addMessage(t("Selected " . $this->single_class_name . " has been submitted for ingestion."));
           $form_state->setRedirectUrl(Utils::selectBackUrl('sdd'));
           return;
-        } 
+        }
       }
-    }  
+    }
 
     // BACK TO MAIN PAGE
     if ($button_name === 'back') {
       $url = Url::fromRoute('sem.search');
       $form_state->setRedirectUrl($url);
-    }  
+    }
 
   }
-  
+
 }

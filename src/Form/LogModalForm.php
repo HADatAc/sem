@@ -26,6 +26,9 @@ class LogModalForm extends FormBase {
         'callback' => '::submitFormAjax',
         'event' => 'click',
       ],
+      '#attributes' => [
+        'class' => ['btn', 'btn-primary', 'check-button'],
+      ],
     ];
 
     return $form;
