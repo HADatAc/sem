@@ -1313,22 +1313,25 @@ class EditSemanticDataDictionaryForm extends FormBase {
     } 
 
     // IF NOT LEAVING THEN UPDATE STATE OF variables AND OBJECTS
+    $this->updateBasic($form_state);
     $basic = \Drupal::state()->get('my_form_basic');
     $variables = \Drupal::state()->get('my_form_variables');
     if ($variables) {
       $this->updateVariableRows($form_state, $variables);
+      $variables = \Drupal::state()->get('my_form_variables');
     }
-    $variables = \Drupal::state()->get('my_form_variables');
     $objects = \Drupal::state()->get('my_form_objects');
     if ($objects) {
       $this->updateObjectRows($form_state, $objects);
+      $objects = \Drupal::state()->get('my_form_objects');
     }
     $objects = \Drupal::state()->get('my_form_objects');
     $codes = \Drupal::state()->get('my_form_codes');
     if ($codes) {
       $this->updateCodeRows($form_state, $codes);
+      $codes = \Drupal::state()->get('my_form_codes');
     }
-    $codes = \Drupal::state()->get('my_form_codes');
+
 
     if ($button_name === 'new_variable') {
       $this->addVariableRow();

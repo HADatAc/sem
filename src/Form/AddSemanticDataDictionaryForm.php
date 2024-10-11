@@ -32,13 +32,35 @@ class AddSemanticDataDictionaryForm extends FormBase {
     return 'add_semantic_data_dictionary_form';
   }
 
+  /**************************************************************
+   **************************************************************
+   ***                                                        *** 
+   ***                    BUILD FORM                          *** 
+   ***                                                        *** 
+   **************************************************************
+   **************************************************************/
+
   /**
    * {@inheritdoc}
    */
   public function buildForm(array $form, FormStateInterface $form_state, $state=NULL) {
     
+    dpm($state);
+
+    // FOUR groups of values are preserved in state: basic, variables, objects and codes.
+    // for each group, we have render*, update*, save*, add*, remove* (basic has no add* and remove*)
+    //   - render* is from $CONCEPT to $form
+    //     (used in the buildForm())
+    //   - update* is from $form_state to $CONCEPT
+    //   - save* is from $CONCEPT to triple store
+    //     (used in the save operation of submitForm())
+
     // SET STATE, VARIABLES AND OBJECTS
     if (isset($state) && $state === 'init') {
+      \Drupal::state()->delete('my_form_basic');
+      \Drupal::state()->delete('my_form_variables');
+      \Drupal::state()->delete('my_form_objects');
+      \Drupal::state()->delete('my_form_codes');
       $basic = [
         'name' => '',
         'version' => '',
@@ -46,17 +68,11 @@ class AddSemanticDataDictionaryForm extends FormBase {
       ];
       $variables = [];
       $objects = [];
-      \Drupal::state()->delete('my_form_basic');
-      \Drupal::state()->delete('my_form_variables');
-      \Drupal::state()->delete('my_form_objects');
-      \Drupal::state()->delete('my_form_codes');
+      $codes = [];
       $state = 'basic';
     } else {
-      $basic = \Drupal::state()->get('my_form_basic') ?? [
-        'name' => '',
-        'version' => '',
-        'description' => '',
-      ];;
+      dpm(\Drupal::state()->get('my_form_basic'));
+      $basic = \Drupal::state()->get('my_form_basic') ?? [];
       $variables = \Drupal::state()->get('my_form_variables') ?? [];
       $objects = \Drupal::state()->get('my_form_objects') ?? []; 
       $codes = \Drupal::state()->get('my_form_codes') ?? [];
@@ -353,7 +369,15 @@ class AddSemanticDataDictionaryForm extends FormBase {
     return $form;
   }
 
-  public function validateForm(array &$form, FormStateInterface $form_state) {
+  /**************************************************************
+   **************************************************************
+   ***                                                        *** 
+   ***         VALIDATE FORM  AND AUXILIARY FUNCTIONS         *** 
+   ***                                                        *** 
+   **************************************************************
+   **************************************************************/
+
+   public function validateForm(array &$form, FormStateInterface $form_state) {
     $submitted_values = $form_state->cleanValues()->getValues();
     $triggering_element = $form_state->getTriggeringElement();
     $button_name = $triggering_element['#name'];
@@ -377,7 +401,7 @@ class AddSemanticDataDictionaryForm extends FormBase {
     // RETRIEVE CURRENT STATE AND SAVE IT ACCORDINGLY
     $currentState = $form_state->getValue('state');
     if ($currentState == 'basic') {
-      $this->updateBasic($form, $form_state);
+      $this->updateBasic($form_state);
     }
     if ($currentState == 'dictionary') {
       $variables = \Drupal::state()->get('my_form_variables');
@@ -421,7 +445,7 @@ class AddSemanticDataDictionaryForm extends FormBase {
   /**
    * {@inheritdoc}
    */
-  public function updateBasic(array &$form, FormStateInterface $form_state) {
+  public function updateBasic(FormStateInterface $form_state) {
     $basic = \Drupal::state()->get('my_form_basic') ?? [
       'name' => '',
       'version' => '',
@@ -435,8 +459,8 @@ class AddSemanticDataDictionaryForm extends FormBase {
       $basic['version']     = $input['semantic_data_dictionary_version'] ?? '';
       $basic['description'] = $input['semantic_data_dictionary_description'] ?? '';
 
-      \Drupal::state()->set('my_form_basic', $basic);
     }
+    \Drupal::state()->set('my_form_basic', $basic);
     $response = new AjaxResponse();
     return $response;
   }
@@ -606,8 +630,8 @@ class AddSemanticDataDictionaryForm extends FormBase {
           $variables[$variable_id]['was_derived_from']  = $input['variable_was_derived_from_' . $variable_id] ?? '';
         }
       }      
-      \Drupal::state()->set('my_form_variables', $variables);
     }
+    \Drupal::state()->set('my_form_variables', $variables);
     return;
   }
   
@@ -874,8 +898,8 @@ class AddSemanticDataDictionaryForm extends FormBase {
           $objects[$object_id]['was_derived_from']  = $input['object_was_derived_from_' . $object_id] ?? '';
         }
       }      
-      \Drupal::state()->set('my_form_objects', $objects);
     }
+    \Drupal::state()->set('my_form_objects', $objects);
     return;
   }
   
@@ -1105,8 +1129,8 @@ class AddSemanticDataDictionaryForm extends FormBase {
           $codes[$code_id]['class']   = $input['code_class_' . $code_id] ?? '';
         }
       }      
-      \Drupal::state()->set('my_form_codes', $codes);
     }
+    \Drupal::state()->set('my_form_codes', $codes);
     return;
   }
   
@@ -1204,11 +1228,13 @@ class AddSemanticDataDictionaryForm extends FormBase {
     return;
   }
   
-  /* ================================================================================ *
-   * 
-   *                                 SUBMIT FORM
-   * 
-   * ================================================================================ */ 
+  /**************************************************************
+   **************************************************************
+   ***                                                        *** 
+   ***                    SUBMIT FORM                         *** 
+   ***                                                        *** 
+   **************************************************************
+   **************************************************************/
 
   /**
    * {@inheritdoc}
@@ -1228,23 +1254,25 @@ class AddSemanticDataDictionaryForm extends FormBase {
       return;
     } 
 
-    // IF NOT LEAVING THEN UPDATE STATE OF variables AND OBJECTS
+    // IF NOT LEAVING THEN UPDATE STATE OF BASIC, VARIABLES, OBJECTS AND CODE
+    $this->updateBasic($form_state);
     $basic = \Drupal::state()->get('my_form_basic');
     $variables = \Drupal::state()->get('my_form_variables');
     if ($variables) {
       $this->updateVariableRows($form_state, $variables);
+      $variables = \Drupal::state()->get('my_form_variables');
     }
-    $variables = \Drupal::state()->get('my_form_variables');
     $objects = \Drupal::state()->get('my_form_objects');
     if ($objects) {
       $this->updateObjectRows($form_state, $objects);
+      $objects = \Drupal::state()->get('my_form_objects');
     }
     $objects = \Drupal::state()->get('my_form_objects');
     $codes = \Drupal::state()->get('my_form_codes');
     if ($codes) {
       $this->updateCodeRows($form_state, $codes);
+      $codes = \Drupal::state()->get('my_form_codes');
     }
-    $codes = \Drupal::state()->get('my_form_codes');
 
     if ($button_name === 'new_variable') {
       $this->addVariableRow();
@@ -1292,7 +1320,7 @@ class AddSemanticDataDictionaryForm extends FormBase {
         $api = \Drupal::service('rep.api_connector');
         $api->elementAdd('semanticdatadictionary',$semanticDataDictionaryJSON);
         if (isset($variables)) {
-          $this->savevariables($newSemanticDataDictionaryUri,$variables);
+          $this->saveVariables($newSemanticDataDictionaryUri,$variables);
         }
         if (isset($objects)) {
           $this->saveObjects($newSemanticDataDictionaryUri,$objects);
