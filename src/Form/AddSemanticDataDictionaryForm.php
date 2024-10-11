@@ -45,15 +45,14 @@ class AddSemanticDataDictionaryForm extends FormBase {
    */
   public function buildForm(array $form, FormStateInterface $form_state, $state=NULL) {
     
-    dpm($state);
-
     // FOUR groups of values are preserved in state: basic, variables, objects and codes.
     // for each group, we have render*, update*, save*, add*, remove* (basic has no add* and remove*)
-    //   - render* is from $CONCEPT to $form
-    //     (used in the buildForm())
-    //   - update* is from $form_state to $CONCEPT
-    //   - save* is from $CONCEPT to triple store
-    //     (used in the save operation of submitForm())
+    //   - render* is from $ELEMENT to $form
+    //     (used in buildForm())
+    //   - update* is from $form_state to $ELEMENT and save state
+    //     (used in pills_card_callback())
+    //   - save* is from $ELEMENT to triple store
+    //     (used in save operation of submitForm())
 
     // SET STATE, VARIABLES AND OBJECTS
     if (isset($state) && $state === 'init') {
@@ -71,13 +70,13 @@ class AddSemanticDataDictionaryForm extends FormBase {
       $codes = [];
       $state = 'basic';
     } else {
-      dpm(\Drupal::state()->get('my_form_basic'));
       $basic = \Drupal::state()->get('my_form_basic') ?? [];
       $variables = \Drupal::state()->get('my_form_variables') ?? [];
       $objects = \Drupal::state()->get('my_form_objects') ?? []; 
       $codes = \Drupal::state()->get('my_form_codes') ?? [];
     }
     $this->setState($state);
+
 
     // SET SEPARATOR
     $separator = '<div class="w-100"></div>';
@@ -1166,7 +1165,7 @@ class AddSemanticDataDictionaryForm extends FormBase {
 
           $class = ' ';
           if ($codes[$code_id]['class'] != NULL && $codes[$code_id]['class'] != '') {
-            $unitUri = $codes[$code_id]['class'];
+            $class = $codes[$code_id]['class'];
           } 
 
           $codeUri = str_replace(
@@ -1255,24 +1254,10 @@ class AddSemanticDataDictionaryForm extends FormBase {
     } 
 
     // IF NOT LEAVING THEN UPDATE STATE OF BASIC, VARIABLES, OBJECTS AND CODE
-    $this->updateBasic($form_state);
     $basic = \Drupal::state()->get('my_form_basic');
     $variables = \Drupal::state()->get('my_form_variables');
-    if ($variables) {
-      $this->updateVariableRows($form_state, $variables);
-      $variables = \Drupal::state()->get('my_form_variables');
-    }
-    $objects = \Drupal::state()->get('my_form_objects');
-    if ($objects) {
-      $this->updateObjectRows($form_state, $objects);
-      $objects = \Drupal::state()->get('my_form_objects');
-    }
     $objects = \Drupal::state()->get('my_form_objects');
     $codes = \Drupal::state()->get('my_form_codes');
-    if ($codes) {
-      $this->updateCodeRows($form_state, $codes);
-      $codes = \Drupal::state()->get('my_form_codes');
-    }
 
     if ($button_name === 'new_variable') {
       $this->addVariableRow();

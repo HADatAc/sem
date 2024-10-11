@@ -46,6 +46,9 @@ class EditSemanticDataDictionaryForm extends FormBase {
    */
   public function buildForm(array $form, FormStateInterface $form_state, $state=NULL, $uri=NULL) {
     
+    // SAVE STATE
+    $this->setState($state);
+
     // READ SEMANTIC_DATA_DICTIONARY
     $api = \Drupal::service('rep.api_connector');
     $uri_decode=base64_decode($uri);
@@ -60,36 +63,11 @@ class EditSemanticDataDictionaryForm extends FormBase {
 
     //dpm($semanticDataDictionary);
 
-    // SET STATE, VARIABLES AND OBJECTS
-    if (isset($state) && $state === 'init') {
-      $basic = [
-        'name' => '',
-        'version' => '',
-        'description' => '',
-      ];
-      $variables = [];
-      $objects = [];
-      \Drupal::state()->delete('my_form_basic');
-      \Drupal::state()->delete('my_form_variables');
-      \Drupal::state()->delete('my_form_objects');
-      \Drupal::state()->delete('my_form_codes');
-      $state = 'basic';
-    } else if ($this->getSemanticDataDictionary() != NULL) {
-      $basic = $this->populateBasic();
-      $variables = $this->populateVariables();
-      $objects = $this->populateObjects();
-      $codes = $this->populateCodes(); 
-    } else { 
-      $basic = \Drupal::state()->get('my_form_basic') ?? [
-        'name' => '',
-        'version' => '',
-        'description' => '',
-      ];
-      $variables = \Drupal::state()->get('my_form_variables') ?? [];
-      $objects = \Drupal::state()->get('my_form_objects') ?? []; 
-      $codes = \Drupal::state()->get('my_form_codes') ?? [];
-    }
-    $this->setState($state);
+    // POPULATE DATA STRUCTURES
+    $basic = $this->populateBasic();
+    $variables = $this->populateVariables();
+    $objects = $this->populateObjects();
+    $codes = $this->populateCodes(); 
 
     // SET SEPARATOR
     $separator = '<div class="w-100"></div>';
@@ -472,7 +450,7 @@ class EditSemanticDataDictionaryForm extends FormBase {
   public function populateBasic() {
     $basic = [
       'name' => $this->getSemanticDataDictionary()->label,
-      'version' => $this->getSemanticDataDictionary()->version,
+      'version' => $this->getSemanticDataDictionary()->hasVersion,
       'description' => $this->getSemanticDataDictionary()->comment,      
     ];
     \Drupal::state()->set('my_form_basic', $basic);
@@ -655,10 +633,30 @@ class EditSemanticDataDictionaryForm extends FormBase {
     if (count($attributes) > 0) {
       foreach ($attributes as $attribute_id => $attribute) {
         if (isset($attribute_id) && isset($attribute)) {
-          $variables[$attribute_id] = $attribute;
+          $variables[$attribute_id]['column']            = $attribute->label;
+          $variables[$attribute_id]['attribute']         = $attribute->attribute;
+          $variables[$attribute_id]['is_attribute_of']   = $attribute->objectUri;
+          $variables[$attribute_id]['unit']              = $attribute->unit;
+          $variables[$attribute_id]['time']              = $attribute->eventUri;
+          $variables[$attribute_id]['in_relation_to']    = $attribute->inRelationTo;
+          $variables[$attribute_id]['was_derived_from']  = $attribute->wasDerivedFrom;
         }
       }
     }      
+
+    '"typeUri":"'.HASCO::SDD_ATTRIBUTE.'",'.
+    '"hascoTypeUri":"'.HASCO::SDD_ATTRIBUTE.'",'.
+    '"partOfSchema":"'.$semanticDataDictionaryUri.'",'.
+    '"label":"'.$column.'",'.
+    '"attribute":"' . $attributeUri . '",' .
+    '"objectUri":"' . $isAttributeOf . '",' . 
+    '"unit":"' . $unitUri . '",' . 
+    '"eventUri":"' . $timeUri . '",' . 
+    '"inRelationTo":"' . $inRelationToUri . '",' . 
+    '"wasDerivedFrom":"' . $wasDerivedFromUri . '",' . 
+    '"comment":"Column ' . $column . ' of ' . $semanticDataDictionaryUri . '",'.
+    '"hasSIRManagerEmail":"'.$useremail.'"}';
+
     \Drupal::state()->set('my_form_variables', $variables);
     
     return $variables;
@@ -938,7 +936,12 @@ class EditSemanticDataDictionaryForm extends FormBase {
     if (count($objs) > 0) {
       foreach ($objs as $obj_id => $obj) {
         if (isset($obj_id) && isset($obj)) {
-          $objets[$obj_id] = $obj;
+          $objects[$obj_id]['column']            = $obj->label;
+          $objects[$obj_id]['entity']            = $obj->entity;
+          $objects[$obj_id]['role']              = $obj->role;
+          $objects[$obj_id]['relation']          = $obj->relation;
+          $objects[$obj_id]['in_relation_to']    = $obj->inRelationTo;
+          $objects[$obj_id]['was_derived_from']  = $obj->wasDerivedFrom;
         }
       }
     }      
@@ -1067,7 +1070,6 @@ class EditSemanticDataDictionaryForm extends FormBase {
    protected function renderCodeRows(array $codes) {
     $form_rows = [];
     $separator = '<div class="w-100"></div>';
-    dpm($codes);
     foreach ($codes as $delta => $code) {
 
       $form_row = array(
@@ -1185,7 +1187,10 @@ class EditSemanticDataDictionaryForm extends FormBase {
     if (count($possibleValues) > 0) {
       foreach ($possibleValues as $possibleValue_id => $possibleValue) {
         if (isset($possibleValue_id) && isset($possibleValue)) {
-          $codes[$possibleValue_id] = $possibleValue;
+          $codes[$possibleValue_id]['column']  = $possibleValue->label;
+          $codes[$possibleValue_id]['code']    = $possibleValue->hasCode;
+          $codes[$possibleValue_id]['label']   = $possibleValue->hasCodeLabel;
+          $codes[$possibleValue_id]['class']   = $possibleValue->hasClass;
         }
       }
     }      
@@ -1226,7 +1231,7 @@ class EditSemanticDataDictionaryForm extends FormBase {
 
           $class = ' ';
           if ($codes[$code_id]['class'] != NULL && $codes[$code_id]['class'] != '') {
-            $unitUri = $codes[$code_id]['class'];
+            $class = $codes[$code_id]['class'];
           } 
 
           $codeUri = str_replace(
@@ -1313,25 +1318,10 @@ class EditSemanticDataDictionaryForm extends FormBase {
     } 
 
     // IF NOT LEAVING THEN UPDATE STATE OF variables AND OBJECTS
-    $this->updateBasic($form_state);
     $basic = \Drupal::state()->get('my_form_basic');
     $variables = \Drupal::state()->get('my_form_variables');
-    if ($variables) {
-      $this->updateVariableRows($form_state, $variables);
-      $variables = \Drupal::state()->get('my_form_variables');
-    }
-    $objects = \Drupal::state()->get('my_form_objects');
-    if ($objects) {
-      $this->updateObjectRows($form_state, $objects);
-      $objects = \Drupal::state()->get('my_form_objects');
-    }
     $objects = \Drupal::state()->get('my_form_objects');
     $codes = \Drupal::state()->get('my_form_codes');
-    if ($codes) {
-      $this->updateCodeRows($form_state, $codes);
-      $codes = \Drupal::state()->get('my_form_codes');
-    }
-
 
     if ($button_name === 'new_variable') {
       $this->addVariableRow();
