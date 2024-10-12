@@ -403,22 +403,13 @@ class AddSemanticDataDictionaryForm extends FormBase {
       $this->updateBasic($form_state);
     }
     if ($currentState == 'dictionary') {
-      $variables = \Drupal::state()->get('my_form_variables');
-      if ($variables) {
-        $this->updateVariableRows($form_state, $variables);
-      }
-      $objects = \Drupal::state()->get('my_form_objects');
-      if ($objects) {
-        $this->updateObjectRows($form_state, $objects);
-      }
+      $this->updateVariables($form_state);
+      $this->updateObjects($form_state);
     }
     if ($currentState == 'codebook') {
-      $codes = \Drupal::state()->get('my_form_codes');
-      if ($codes) {
-        $this->updateCodeRows($form_state, $codes);
-      }
+      $this->updateCodes($form_state);
     }
-
+      
     // RETRIEVE FUTURE STATE
     $triggering_element = $form_state->getTriggeringElement();
     $parts = explode('_', $triggering_element['#name']);
@@ -613,7 +604,8 @@ class AddSemanticDataDictionaryForm extends FormBase {
     return $form_rows;
   }
 
-  protected function updateVariableRows(FormStateInterface $form_state, array $variables) {
+  protected function updateVariables(FormStateInterface $form_state) {
+    $variables = \Drupal::state()->get('my_form_variables');
     $input = $form_state->getUserInput();
     if (isset($input) && is_array($input) && 
         isset($variables) && is_array($variables)) {
@@ -882,7 +874,8 @@ class AddSemanticDataDictionaryForm extends FormBase {
     return $form_rows;
   }
 
-  protected function updateObjectRows(FormStateInterface $form_state, array $objects) {
+  protected function updateObjects(FormStateInterface $form_state) {
+    $objects = \Drupal::state()->get('my_form_objects');
     $input = $form_state->getUserInput();
     if (isset($input) && is_array($input) && 
         isset($objects) && is_array($objects)) {
@@ -1115,7 +1108,8 @@ class AddSemanticDataDictionaryForm extends FormBase {
     return $form_rows;
   }
 
-  protected function updateCodeRows(FormStateInterface $form_state, array $codes) {
+  protected function updateCodes(FormStateInterface $form_state) {
+    $codes = \Drupal::state()->get('my_form_codes');
     $input = $form_state->getUserInput();
     if (isset($input) && is_array($input) && 
         isset($codes) && is_array($codes)) {
@@ -1253,7 +1247,22 @@ class AddSemanticDataDictionaryForm extends FormBase {
       return;
     } 
 
-    // IF NOT LEAVING THEN UPDATE STATE OF BASIC, VARIABLES, OBJECTS AND CODE
+    // If not leaving then UPDATE STATE OF VARIABLES, OBJECTS AND CODES
+    // according to the current state of the editor
+    if ($this->getState() === 'basic') {
+      $this->updateBasic($form_state);
+    }
+
+    if ($this->getState() === 'dictionary') {
+      $this->updateVariables($form_state);
+      $this->updateObjects($form_state);
+    }
+
+    if ($this->getState() === 'codebook') {
+      $this->updateCodes($form_state);
+    }
+
+    // Get the latest cached versions of values in the editor
     $basic = \Drupal::state()->get('my_form_basic');
     $variables = \Drupal::state()->get('my_form_variables');
     $objects = \Drupal::state()->get('my_form_objects');

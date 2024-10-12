@@ -46,28 +46,40 @@ class EditSemanticDataDictionaryForm extends FormBase {
    */
   public function buildForm(array $form, FormStateInterface $form_state, $state=NULL, $uri=NULL) {
     
-    // SAVE STATE
-    $this->setState($state);
+    if ($state === 'init') {
+      // READ SEMANTIC_DATA_DICTIONARY
+      $api = \Drupal::service('rep.api_connector');
+      $uri_decode=base64_decode($uri);
+      $semanticDataDictionary = $api->parseObjectResponse($api->getUri($uri_decode),'getUri');
+      if ($semanticDataDictionary == NULL) {
+        \Drupal::messenger()->addMessage(t("Failed to retrieve Semantic Data Dictionary."));
+        self::backUrl();
+        return;
+      } else {
+        $this->setSemanticDataDictionary($semanticDataDictionary);
+        //dpm($this->getSemanticDataDictionary());
+      }
 
-    // READ SEMANTIC_DATA_DICTIONARY
-    $api = \Drupal::service('rep.api_connector');
-    $uri_decode=base64_decode($uri);
-    $semanticDataDictionary = $api->parseObjectResponse($api->getUri($uri_decode),'getUri');
-    if ($semanticDataDictionary == NULL) {
-      \Drupal::messenger()->addMessage(t("Failed to retrieve Semantic Data Dictionary."));
-      self::backUrl();
-      return;
+      // RESET STATE TO BASIC
+      $state = 'basic';
+
+      // POPULATE DATA STRUCTURES
+      $basic = $this->populateBasic();
+      $variables = $this->populateVariables();
+      $objects = $this->populateObjects();
+      $codes = $this->populateCodes(); 
+
     } else {
-      $this->setSemanticDataDictionary($semanticDataDictionary);
+
+      $basic = \Drupal::state()->get('my_form_basic');
+      $variables = \Drupal::state()->get('my_form_variables') ?? [];
+      $objects = \Drupal::state()->get('my_form_objects') ?? []; 
+      $codes = \Drupal::state()->get('my_form_codes') ?? [];
+
     }
 
-    //dpm($semanticDataDictionary);
-
-    // POPULATE DATA STRUCTURES
-    $basic = $this->populateBasic();
-    $variables = $this->populateVariables();
-    $objects = $this->populateObjects();
-    $codes = $this->populateCodes(); 
+    // SAVE STATE
+    $this->setState($state);
 
     // SET SEPARATOR
     $separator = '<div class="w-100"></div>';
@@ -383,24 +395,18 @@ class EditSemanticDataDictionaryForm extends FormBase {
     // RETRIEVE CURRENT STATE AND SAVE IT ACCORDINGLY
     $currentState = $form_state->getValue('state');
     if ($currentState == 'basic') {
-      $this->updateBasic($form, $form_state);
+      $this->updateBasic($form_state);
     }
     if ($currentState == 'dictionary') {
-      $variables = \Drupal::state()->get('my_form_variables');
-      if ($variables) {
-        $this->updateVariableRows($form_state, $variables);
-      }
-      $objects = \Drupal::state()->get('my_form_objects');
-      if ($objects) {
-        $this->updateObjectRows($form_state, $objects);
-      }
+      $this->updateVariables($form_state);
+      $this->updateObjects($form_state);
     }
     if ($currentState == 'codebook') {
-      $codes = \Drupal::state()->get('my_form_codes');
-      if ($codes) {
-        $this->updateCodeRows($form_state, $codes);
-      }
+      $this->updateCodes($form_state);
     }
+  
+    // Need to retrieve $basic because it contains the semantic data dictionary's URI
+    $basic = \Drupal::state()->get('my_form_basic');
 
     // RETRIEVE FUTURE STATE
     $triggering_element = $form_state->getTriggeringElement();
@@ -409,7 +415,7 @@ class EditSemanticDataDictionaryForm extends FormBase {
   
     // BUILD NEW URL
     $root_url = \Drupal::request()->getBaseUrl();
-    $newUrl = $root_url . REPGUI::EDIT_SEMANTIC_DATA_DICTIONARY . $state . '/' . base64_encode($this->semanticDataDictionary->uri);
+    $newUrl = $root_url . REPGUI::EDIT_SEMANTIC_DATA_DICTIONARY . $state . '/' . base64_encode($basic['uri']);
   
     // REDIRECT TO NEW URL
     $response = new AjaxResponse();
@@ -427,20 +433,15 @@ class EditSemanticDataDictionaryForm extends FormBase {
   /**
    * {@inheritdoc}
    */
-  public function updateBasic(array &$form, FormStateInterface $form_state) {
-    $basic = \Drupal::state()->get('my_form_basic') ?? [
-      'name' => '',
-      'version' => '',
-      'description' => '',
-    ];
+  public function updateBasic(FormStateInterface $form_state) {
+    $basic = \Drupal::state()->get('my_form_basic');
     $input = $form_state->getUserInput();
+
     if (isset($input) && is_array($input) && 
-        isset($basic) && is_array($basic)) {
-          
+        isset($basic) && is_array($basic)) {      
       $basic['name']        = $input['semantic_data_dictionary_name'] ?? '';
       $basic['version']     = $input['semantic_data_dictionary_version'] ?? '';
       $basic['description'] = $input['semantic_data_dictionary_description'] ?? '';
-
       \Drupal::state()->set('my_form_basic', $basic);
     }
     $response = new AjaxResponse();
@@ -449,6 +450,7 @@ class EditSemanticDataDictionaryForm extends FormBase {
   
   public function populateBasic() {
     $basic = [
+      'uri' => $this->getSemanticDataDictionary()->uri,
       'name' => $this->getSemanticDataDictionary()->label,
       'version' => $this->getSemanticDataDictionary()->hasVersion,
       'description' => $this->getSemanticDataDictionary()->comment,      
@@ -606,7 +608,8 @@ class EditSemanticDataDictionaryForm extends FormBase {
     return $form_rows;
   }
 
-  protected function updateVariableRows(FormStateInterface $form_state, array $variables) {
+  protected function updateVariables(FormStateInterface $form_state) {
+    $variables = \Drupal::state()->get('my_form_variables');
     $input = $form_state->getUserInput();
     if (isset($input) && is_array($input) && 
         isset($variables) && is_array($variables)) {
@@ -910,7 +913,8 @@ class EditSemanticDataDictionaryForm extends FormBase {
     return $form_rows;
   }
 
-  protected function updateObjectRows(FormStateInterface $form_state, array $objects) {
+  protected function updateObjects(FormStateInterface $form_state) {
+    $objects = \Drupal::state()->get('my_form_objects');
     $input = $form_state->getUserInput();
     if (isset($input) && is_array($input) && 
         isset($objects) && is_array($objects)) {
@@ -1163,7 +1167,8 @@ class EditSemanticDataDictionaryForm extends FormBase {
     return $form_rows;
   }
 
-  protected function updateCodeRows(FormStateInterface $form_state, array $codes) {
+  protected function updateCodes(FormStateInterface $form_state) {
+    $codes = \Drupal::state()->get('my_form_codes');
     $input = $form_state->getUserInput();
     if (isset($input) && is_array($input) && 
         isset($codes) && is_array($codes)) {
@@ -1310,14 +1315,31 @@ class EditSemanticDataDictionaryForm extends FormBase {
     $button_name = $triggering_element['#name'];
 
     if ($button_name === 'back') {
+      // Release values cached in the editor before leaving it
       \Drupal::state()->delete('my_form_basic');
       \Drupal::state()->delete('my_form_variables');
       \Drupal::state()->delete('my_form_objects');
+      \Drupal::state()->delete('my_form_codes');
       self::backUrl();
       return;
     } 
 
-    // IF NOT LEAVING THEN UPDATE STATE OF variables AND OBJECTS
+    // If not leaving then UPDATE STATE OF VARIABLES, OBJECTS AND CODES
+    // according to the current state of the editor
+    if ($this->getState() === 'basic') {
+      $this->updateBasic($form_state);
+    }
+
+    if ($this->getState() === 'dictionary') {
+      $this->updateVariables($form_state);
+      $this->updateObjects($form_state);
+    }
+
+    if ($this->getState() === 'codebook') {
+      $this->updateCodes($form_state);
+    }
+
+    // Get the latest cached versions of values in the editor
     $basic = \Drupal::state()->get('my_form_basic');
     $variables = \Drupal::state()->get('my_form_variables');
     $objects = \Drupal::state()->get('my_form_objects');
@@ -1356,9 +1378,7 @@ class EditSemanticDataDictionaryForm extends FormBase {
     if ($button_name === 'save') {
       try {
         $useremail = \Drupal::currentUser()->getEmail();
-
-        $newSemanticDataDictionaryUri = Utils::uriGen('semanticdatadictionary');
-        $semanticDataDictionaryJSON = '{"uri":"'. $newSemanticDataDictionaryUri .'",'.
+        $semanticDataDictionaryJSON = '{"uri":"'. $basic['uri'] .'",'.
             '"typeUri":"'.HASCO::SEMANTIC_DATA_DICTIONARY.'",'.
             '"hascoTypeUri":"'.HASCO::SEMANTIC_DATA_DICTIONARY.'",'.
             '"label":"'.$basic['name'].'",'.
@@ -1367,28 +1387,37 @@ class EditSemanticDataDictionaryForm extends FormBase {
             '"hasSIRManagerEmail":"'.$useremail.'"}';
 
         $api = \Drupal::service('rep.api_connector');
+
+        // The DELETE of the semantic data dictionary will also delete the 
+        // variables, objects and codes of the dictionary
+        $api->elementDel('semanticdatadictionary',$basic['uri']);
+
+        // In order to update the semantic dictionary it is necessary to
+        // add the following to the dictionary: the dictionary itself, its 
+        // variables, its objects and its codes
         $api->elementAdd('semanticdatadictionary',$semanticDataDictionaryJSON);
         if (isset($variables)) {
-          $this->savevariables($newSemanticDataDictionaryUri,$variables);
+          $this->saveVariables($basic['uri'],$variables);
         }
         if (isset($objects)) {
-          $this->saveObjects($newSemanticDataDictionaryUri,$objects);
+          $this->saveObjects($basic['uri'],$objects);
         }
         if (isset($codes)) {
-          $this->saveCodes($newSemanticDataDictionaryUri,$codes);
+          $this->saveCodes($basic['uri'],$codes);
         }
 
+        // Release values cached in the editor
         \Drupal::state()->delete('my_form_basic');
         \Drupal::state()->delete('my_form_variables');
         \Drupal::state()->delete('my_form_objects');
         \Drupal::state()->delete('my_form_codes');
 
-        \Drupal::messenger()->addMessage(t("Semantic Data Dictionary has been added successfully."));      
+        \Drupal::messenger()->addMessage(t("Semantic Data Dictionary has been updated successfully."));      
         self::backUrl();
         return;
 
       } catch(\Exception $e){
-        \Drupal::messenger()->addMessage(t("An error occurred while adding a semantic data dictionary: ".$e->getMessage()));
+        \Drupal::messenger()->addMessage(t("An error occurred while updating a semantic data dictionary: ".$e->getMessage()));
         self::backUrl();
         return;      
       }
