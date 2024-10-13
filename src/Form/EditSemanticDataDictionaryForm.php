@@ -636,30 +636,18 @@ class EditSemanticDataDictionaryForm extends FormBase {
     if (count($attributes) > 0) {
       foreach ($attributes as $attribute_id => $attribute) {
         if (isset($attribute_id) && isset($attribute)) {
-          $variables[$attribute_id]['column']            = $attribute->label;
-          $variables[$attribute_id]['attribute']         = $attribute->attribute;
-          $variables[$attribute_id]['is_attribute_of']   = $attribute->objectUri;
-          $variables[$attribute_id]['unit']              = $attribute->unit;
-          $variables[$attribute_id]['time']              = $attribute->eventUri;
-          $variables[$attribute_id]['in_relation_to']    = $attribute->inRelationTo;
-          $variables[$attribute_id]['was_derived_from']  = $attribute->wasDerivedFrom;
+          $listPosition = $attribute->listPosition;
+          $variables[$listPosition]['column']            = $attribute->label;
+          $variables[$listPosition]['attribute']         = $attribute->attribute;
+          $variables[$listPosition]['is_attribute_of']   = $attribute->objectUri;
+          $variables[$listPosition]['unit']              = $attribute->unit;
+          $variables[$listPosition]['time']              = $attribute->eventUri;
+          $variables[$listPosition]['in_relation_to']    = $attribute->inRelationTo;
+          $variables[$listPosition]['was_derived_from']  = $attribute->wasDerivedFrom;
         }
       }
-    }      
-
-    '"typeUri":"'.HASCO::SDD_ATTRIBUTE.'",'.
-    '"hascoTypeUri":"'.HASCO::SDD_ATTRIBUTE.'",'.
-    '"partOfSchema":"'.$semanticDataDictionaryUri.'",'.
-    '"label":"'.$column.'",'.
-    '"attribute":"' . $attributeUri . '",' .
-    '"objectUri":"' . $isAttributeOf . '",' . 
-    '"unit":"' . $unitUri . '",' . 
-    '"eventUri":"' . $timeUri . '",' . 
-    '"inRelationTo":"' . $inRelationToUri . '",' . 
-    '"wasDerivedFrom":"' . $wasDerivedFromUri . '",' . 
-    '"comment":"Column ' . $column . ' of ' . $semanticDataDictionaryUri . '",'.
-    '"hasSIRManagerEmail":"'.$useremail.'"}';
-
+      ksort($variables);
+    }          
     \Drupal::state()->set('my_form_variables', $variables);
     
     return $variables;
@@ -723,6 +711,7 @@ class EditSemanticDataDictionaryForm extends FormBase {
               '"typeUri":"'.HASCO::SDD_ATTRIBUTE.'",'.
               '"hascoTypeUri":"'.HASCO::SDD_ATTRIBUTE.'",'.
               '"partOfSchema":"'.$semanticDataDictionaryUri.'",'.
+              '"listPosition":"'.$variable_id.'",'.
               '"label":"'.$column.'",'.
               '"attribute":"' . $attributeUri . '",' .
               '"objectUri":"' . $isAttributeOf . '",' . 
@@ -940,14 +929,16 @@ class EditSemanticDataDictionaryForm extends FormBase {
     if (count($objs) > 0) {
       foreach ($objs as $obj_id => $obj) {
         if (isset($obj_id) && isset($obj)) {
-          $objects[$obj_id]['column']            = $obj->label;
-          $objects[$obj_id]['entity']            = $obj->entity;
-          $objects[$obj_id]['role']              = $obj->role;
-          $objects[$obj_id]['relation']          = $obj->relation;
-          $objects[$obj_id]['in_relation_to']    = $obj->inRelationTo;
-          $objects[$obj_id]['was_derived_from']  = $obj->wasDerivedFrom;
+          $listPosition = $obj->listPosition;
+          $objects[$listPosition]['column']            = $obj->label;
+          $objects[$listPosition]['entity']            = $obj->entity;
+          $objects[$listPosition]['role']              = $obj->role;
+          $objects[$listPosition]['relation']          = $obj->relation;
+          $objects[$listPosition]['in_relation_to']    = $obj->inRelationTo;
+          $objects[$listPosition]['was_derived_from']  = $obj->wasDerivedFrom;
         }
       }
+      ksort($objects);
     }      
     \Drupal::state()->set('my_form_objects', $objects);
     
@@ -1007,6 +998,7 @@ class EditSemanticDataDictionaryForm extends FormBase {
               '"typeUri":"'.HASCO::SDD_OBJECT.'",'.
               '"hascoTypeUri":"'.HASCO::SDD_OBJECT.'",'.
               '"partOfSchema":"'.$semanticDataDictionaryUri.'",'.
+              '"listPosition":"'.$object_id.'",'.
               '"label":"'.$column.'",'.
               '"entity":"' . $entity . '",' .
               '"role":"' . $role . '",' . 
@@ -1192,15 +1184,16 @@ class EditSemanticDataDictionaryForm extends FormBase {
     if (count($possibleValues) > 0) {
       foreach ($possibleValues as $possibleValue_id => $possibleValue) {
         if (isset($possibleValue_id) && isset($possibleValue)) {
-          $codes[$possibleValue_id]['column']  = $possibleValue->label;
-          $codes[$possibleValue_id]['code']    = $possibleValue->hasCode;
-          $codes[$possibleValue_id]['label']   = $possibleValue->hasCodeLabel;
-          $codes[$possibleValue_id]['class']   = $possibleValue->hasClass;
+          $listPosition = $possibleValue->listPosition;
+          $codes[$listPosition]['column']  = $possibleValue->isPossibleValueOf;
+          $codes[$listPosition]['code']    = $possibleValue->hasCode;
+          $codes[$listPosition]['label']   = $possibleValue->hasCodeLabel;
+          $codes[$listPosition]['class']   = $possibleValue->hasClass;
         }
       }
+      ksort($codes);
     }      
-    \Drupal::state()->set('my_form_codes', $codes);
-    
+    \Drupal::state()->set('my_form_codes', $codes); 
     return $codes;
   }
   
@@ -1247,6 +1240,8 @@ class EditSemanticDataDictionaryForm extends FormBase {
               '"superUri":"'.HASCO::POSSIBLE_VALUE.'",'.
               '"hascoTypeUri":"'.HASCO::POSSIBLE_VALUE.'",'.
               '"partOfSchema":"'.$semanticDataDictionaryUri.'",'.
+              '"listPosition":"'.$code_id.'",'.
+              '"isPossibleValueOf":"'.$column.'",'.
               '"label":"'.$column.'",'.
               '"hasCode":"' . $codeStr . '",' .
               '"hasCodeLabel":"' . $codeLabel . '",' . 

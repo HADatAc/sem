@@ -684,6 +684,7 @@ class AddSemanticDataDictionaryForm extends FormBase {
               '"typeUri":"'.HASCO::SDD_ATTRIBUTE.'",'.
               '"hascoTypeUri":"'.HASCO::SDD_ATTRIBUTE.'",'.
               '"partOfSchema":"'.$semanticDataDictionaryUri.'",'.
+              '"listPosition":"'.$variable_id.'",'.
               '"label":"'.$column.'",'.
               '"attribute":"' . $attributeUri . '",' .
               '"objectUri":"' . $isAttributeOf . '",' . 
@@ -948,6 +949,7 @@ class AddSemanticDataDictionaryForm extends FormBase {
               '"typeUri":"'.HASCO::SDD_OBJECT.'",'.
               '"hascoTypeUri":"'.HASCO::SDD_OBJECT.'",'.
               '"partOfSchema":"'.$semanticDataDictionaryUri.'",'.
+              '"listPosition":"'.$object_id.'",'.
               '"label":"'.$column.'",'.
               '"entity":"' . $entity . '",' .
               '"role":"' . $role . '",' . 
@@ -1170,6 +1172,8 @@ class AddSemanticDataDictionaryForm extends FormBase {
               '"superUri":"'.HASCO::POSSIBLE_VALUE.'",'.
               '"hascoTypeUri":"'.HASCO::POSSIBLE_VALUE.'",'.
               '"partOfSchema":"'.$semanticDataDictionaryUri.'",'.
+              '"listPosition":"'.$code_id.'",'.
+              '"isPossibleValueOf":"'.$column.'",'.
               '"label":"'.$column.'",'.
               '"hasCode":"' . $codeStr . '",' .
               '"hasCodeLabel":"' . $codeLabel . '",' . 
