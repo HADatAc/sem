@@ -15,8 +15,3 @@ sem_list:
     js/sem_list.js: {}
   dependencies:
     - core/jquery
-#fontawesome5:
-#  version: 1.0
-#  css:
-#    component:
-#      //use.fontawesome.com/releases/v5.15.4/css/all.css: {}

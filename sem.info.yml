@@ -2,8 +2,10 @@ name: Semantic Elements
 description: GUI for managing semantic elements like entities, attributes and variables stored in a HASCO API
 package: Semantic Tools
 core_version_requirement: ^9 || ^10
-type: module 
+type: module
 dependencies:
   - drupal:rep
 version: '0.7.0'
 configure: rep.admin_settings
+libraries:
+  - rep/rep_js_css
