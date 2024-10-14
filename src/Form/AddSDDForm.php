@@ -31,7 +31,7 @@ class AddSDDForm extends FormBase {
       '#type' => 'textfield',
       '#title' => $this->t('Name'),
     ];
-    
+
     $form['sdd_filename'] = [
       '#type' => 'managed_file',
       '#title' => $this->t('File Upload'),
@@ -53,11 +53,17 @@ class AddSDDForm extends FormBase {
       '#type' => 'submit',
       '#value' => $this->t('Save'),
       '#name' => 'save',
+      '#attributes' => [
+        'class' => ['btn', 'btn-primary', 'save-button'],
+      ],
     ];
     $form['cancel_submit'] = [
       '#type' => 'submit',
       '#value' => $this->t('Cancel'),
       '#name' => 'back',
+      '#attributes' => [
+        'class' => ['btn', 'btn-primary', 'cancel-button'],
+      ],
     ];
     $form['bottom_space'] = [
       '#type' => 'item',
@@ -93,7 +99,7 @@ class AddSDDForm extends FormBase {
     if ($button_name === 'back') {
       $form_state->setRedirectUrl(Utils::selectBackUrl('sdd'));
       return;
-    } 
+    }
 
     try {
       $useremail = \Drupal::currentUser()->getEmail();
@@ -108,9 +114,9 @@ class AddSDDForm extends FormBase {
           '"typeUri":"'.HASCO::DATAFILE.'",'.
           '"hascoTypeUri":"'.HASCO::DATAFILE.'",'.
           '"label":"'.$form_state->getValue('sdd_name').'",'.
-          '"filename":"'.$filename.'",'.          
-          '"id":"'.$fileId[0].'",'.          
-          '"fileStatus":"'.Constant::FILE_STATUS_UNPROCESSED.'",'.          
+          '"filename":"'.$filename.'",'.
+          '"id":"'.$fileId[0].'",'.
+          '"fileStatus":"'.Constant::FILE_STATUS_UNPROCESSED.'",'.
           '"hasSIRManagerEmail":"'.$useremail.'"}';
 
       $newSDDUri = str_replace("DF","SD",$newDataFileUri);
@@ -118,7 +124,7 @@ class AddSDDForm extends FormBase {
           '"typeUri":"'.HASCO::SDD.'",'.
           '"hascoTypeUri":"'.HASCO::SDD.'",'.
           '"label":"'.$form_state->getValue('sdd_name').'",'.
-          '"hasDataFile":"'.$newDataFileUri.'",'.          
+          '"hasDataFile":"'.$newDataFileUri.'",'.
           '"hasVersion":"'.$form_state->getValue('sdd_version').'",'.
           '"comment":"'.$form_state->getValue('sdd_description').'",'.
           '"hasSIRManagerEmail":"'.$useremail.'"}';
@@ -139,9 +145,9 @@ class AddSDDForm extends FormBase {
         $msg2 = $api->parseObjectResponse($api->sddAdd($sddJSON),'sddAdd');
 
         if ($msg1 != NULL && $msg2 != NULL) {
-          \Drupal::messenger()->addMessage(t("SDD has been added successfully."));      
+          \Drupal::messenger()->addMessage(t("SDD has been added successfully."));
         } else {
-          \Drupal::messenger()->addError(t("Something went wrong while adding SDD."));      
+          \Drupal::messenger()->addError(t("Something went wrong while adding SDD."));
         }
         $form_state->setRedirectUrl(Utils::selectBackUrl('sdd'));
         return;

@@ -61,11 +61,17 @@ class AddSemanticVariableForm extends FormBase {
       '#type' => 'submit',
       '#value' => $this->t('Save'),
       '#name' => 'save',
+      '#attributes' => [
+        'class' => ['btn', 'btn-primary', 'save-button'],
+      ],
     ];
     $form['cancel_submit'] = [
       '#type' => 'submit',
       '#value' => $this->t('Cancel'),
       '#name' => 'back',
+      '#attributes' => [
+        'class' => ['btn', 'btn-primary', 'cancel-button'],
+      ],
     ];
     $form['bottom_space'] = [
       '#type' => 'item',
@@ -104,7 +110,7 @@ class AddSemanticVariableForm extends FormBase {
     if ($button_name === 'back') {
       $form_state->setRedirectUrl(Utils::selectBackUrl('semanticvariable'));
       return;
-    } 
+    }
 
     try {
       $useremail = \Drupal::currentUser()->getEmail();
@@ -112,45 +118,45 @@ class AddSemanticVariableForm extends FormBase {
       $entityUri = 'null';
       if ($form_state->getValue('semantic_variable_entity') != NULL && $form_state->getValue('semantic_variable_entity') != '') {
         $entityUri = Utils::uriFromAutocomplete($form_state->getValue('semantic_variable_entity'));
-      } 
+      }
 
       $attributeUri = 'null';
       if ($form_state->getValue('semantic_variable_attribute') != NULL && $form_state->getValue('semantic_variable_attribute') != '') {
         $attributeUri = Utils::uriFromAutocomplete($form_state->getValue('semantic_variable_attribute'));
-      } 
+      }
 
       $inRelationToUri = 'null';
       if ($form_state->getValue('semantic_variable_in_relation_to') != NULL && $form_state->getValue('semantic_variable_in_relation_to') != '') {
         $inRelationToUri = Utils::uriFromAutocomplete($form_state->getValue('semantic_variable_in_relation_to'));
-      } 
+      }
 
       $unitUri = 'null';
       if ($form_state->getValue('semantic_variable_unit') != NULL && $form_state->getValue('semantic_variable_unit') != '') {
         $unitUri = Utils::uriFromAutocomplete($form_state->getValue('semantic_variable_unit'));
-      } 
+      }
 
       $timeUri = 'null';
       if ($form_state->getValue('semantic_variable_time') != NULL && $form_state->getValue('semantic_variable_time') != '') {
         $timeUri = Utils::uriFromAutocomplete($form_state->getValue('semantic_variable_time'));
-      } 
+      }
 
       $newSemanticVariableUri = Utils::uriGen('semanticvariable');
       $semanticVariableJSON = '{"uri":"'. $newSemanticVariableUri .'",'.
           '"typeUri":"'.HASCO::SEMANTIC_VARIABLE.'",'.
           '"hascoTypeUri":"'.HASCO::SEMANTIC_VARIABLE.'",'.
           '"label":"'.$form_state->getValue('semantic_variable_name').'",'.
-          '"entityUri":"' . $entityUri . '",' . 
+          '"entityUri":"' . $entityUri . '",' .
           '"attributeUri":"' . $attributeUri . '",' .
-          '"inRelationToUri":"' . $inRelationToUri . '",' . 
-          '"unitUri":"' . $unitUri . '",' . 
-          '"timeUri":"' . $timeUri . '",' . 
+          '"inRelationToUri":"' . $inRelationToUri . '",' .
+          '"unitUri":"' . $unitUri . '",' .
+          '"timeUri":"' . $timeUri . '",' .
           '"hasVersion":"'.$form_state->getValue('semantic_variable_version').'",'.
           '"comment":"'.$form_state->getValue('semantic_variable_description').'",'.
           '"hasSIRManagerEmail":"'.$useremail.'"}';
 
       $api = \Drupal::service('rep.api_connector');
       $api->semanticVariableAdd($semanticVariableJSON);
-      \Drupal::messenger()->addMessage(t("Semantic Variable has been added successfully."));      
+      \Drupal::messenger()->addMessage(t("Semantic Variable has been added successfully."));
       $form_state->setRedirectUrl(Utils::selectBackUrl('semanticvariable'));
 
     }catch(\Exception $e){
