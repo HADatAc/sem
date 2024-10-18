@@ -83,7 +83,7 @@ class AddSemanticDataDictionaryForm extends FormBase {
 
     $form['semantic_data_dictionary_title'] = [
       '#type' => 'markup',
-      '#markup' => '<h3>Add Semantic Data Dictionary</h3><br>',
+      '#markup' => '<h3 class="mt-5">Add Semantic Data Dictionary</h3><br>'
     ];
 
     $form['current_state'] = [
