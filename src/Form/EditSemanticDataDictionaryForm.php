@@ -11,6 +11,7 @@ use Drupal\Core\Url;
 use Symfony\Component\HttpFoundation\RedirectResponse;
 use Drupal\rep\Constant;
 use Drupal\rep\Utils;
+use Drupal\rep\Entity\Tables;
 use Drupal\rep\Vocabulary\HASCO;
 use Drupal\rep\Vocabulary\REPGUI;
 
@@ -46,6 +47,11 @@ class EditSemanticDataDictionaryForm extends FormBase {
    */
   public function buildForm(array $form, FormStateInterface $form_state, $state=NULL, $uri=NULL) {
 
+    // INITIALIZE NS TABLE
+    $tables = new Tables;
+    $namespaces = $tables->getNamespaces();
+
+
     if ($state === 'init') {
       // READ SEMANTIC_DATA_DICTIONARY
       $api = \Drupal::service('rep.api_connector');
@@ -65,9 +71,9 @@ class EditSemanticDataDictionaryForm extends FormBase {
 
       // POPULATE DATA STRUCTURES
       $basic = $this->populateBasic();
-      $variables = $this->populateVariables();
-      $objects = $this->populateObjects();
-      $codes = $this->populateCodes();
+      $variables = $this->populateVariables($namespaces);
+      $objects = $this->populateObjects($namespaces);
+      $codes = $this->populateCodes($namespaces);
 
     } else {
 
@@ -636,7 +642,7 @@ class EditSemanticDataDictionaryForm extends FormBase {
     return;
   }
 
-  protected function populateVariables() {
+  protected function populateVariables($namespaces) {
     $variables = [];
     $attributes = $this->getSemanticDataDictionary()->attributes;
     if (count($attributes) > 0) {
@@ -644,10 +650,10 @@ class EditSemanticDataDictionaryForm extends FormBase {
         if (isset($attribute_id) && isset($attribute)) {
           $listPosition = $attribute->listPosition;
           $variables[$listPosition]['column']            = $attribute->label;
-          $variables[$listPosition]['attribute']         = $attribute->attribute;
+          $variables[$listPosition]['attribute']         = Utils::namespaceUriWithNS($attribute->attribute,$namespaces);
           $variables[$listPosition]['is_attribute_of']   = $attribute->objectUri;
-          $variables[$listPosition]['unit']              = $attribute->unit;
-          $variables[$listPosition]['time']              = $attribute->eventUri;
+          $variables[$listPosition]['unit']              = Utils::namespaceUriWithNS($attribute->unit,$namespaces);
+          $variables[$listPosition]['time']              = Utils::namespaceUriWithNS($attribute->eventUri,$namespaces);
           $variables[$listPosition]['in_relation_to']    = $attribute->inRelationTo;
           $variables[$listPosition]['was_derived_from']  = $attribute->wasDerivedFrom;
         }
@@ -929,7 +935,7 @@ class EditSemanticDataDictionaryForm extends FormBase {
     return;
   }
 
-  protected function populateObjects() {
+  protected function populateObjects($namespaces) {
     $objects = [];
     $objs = $this->getSemanticDataDictionary()->objects;
     if (count($objs) > 0) {
@@ -937,9 +943,9 @@ class EditSemanticDataDictionaryForm extends FormBase {
         if (isset($obj_id) && isset($obj)) {
           $listPosition = $obj->listPosition;
           $objects[$listPosition]['column']            = $obj->label;
-          $objects[$listPosition]['entity']            = $obj->entity;
-          $objects[$listPosition]['role']              = $obj->role;
-          $objects[$listPosition]['relation']          = $obj->relation;
+          $objects[$listPosition]['entity']            = Utils::namespaceUriWithNS($obj->entity,$namespaces);
+          $objects[$listPosition]['role']              = Utils::namespaceUriWithNS($obj->role,$namespaces);
+          $objects[$listPosition]['relation']          = Utils::namespaceUriWithNS($obj->relation,$namespaces);
           $objects[$listPosition]['in_relation_to']    = $obj->inRelationTo;
           $objects[$listPosition]['was_derived_from']  = $obj->wasDerivedFrom;
         }
@@ -1184,7 +1190,7 @@ class EditSemanticDataDictionaryForm extends FormBase {
     return;
   }
 
-  protected function populateCodes() {
+  protected function populateCodes($namespaces) {
     $codes = [];
     $possibleValues = $this->getSemanticDataDictionary()->possibleValues;
     if (count($possibleValues) > 0) {
@@ -1194,7 +1200,7 @@ class EditSemanticDataDictionaryForm extends FormBase {
           $codes[$listPosition]['column']  = $possibleValue->isPossibleValueOf;
           $codes[$listPosition]['code']    = $possibleValue->hasCode;
           $codes[$listPosition]['label']   = $possibleValue->hasCodeLabel;
-          $codes[$listPosition]['class']   = $possibleValue->hasClass;
+          $codes[$listPosition]['class']   = Utils::namespaceUriWithNS($possibleValue->hasClass,$namespaces);
         }
       }
       ksort($codes);
