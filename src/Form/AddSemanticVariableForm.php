@@ -6,6 +6,7 @@ use Drupal\Core\Form\FormBase;
 use Drupal\Core\Form\FormStateInterface;
 use Drupal\rep\Utils;
 use Drupal\rep\Vocabulary\HASCO;
+use Symfony\Component\HttpFoundation\RedirectResponse;
 
 class AddSemanticVariableForm extends FormBase {
 
@@ -108,7 +109,7 @@ class AddSemanticVariableForm extends FormBase {
     $button_name = $triggering_element['#name'];
 
     if ($button_name === 'back') {
-      $form_state->setRedirectUrl(Utils::selectBackUrl('semanticvariable'));
+      self::backUrl();
       return;
     }
 
@@ -164,6 +165,16 @@ class AddSemanticVariableForm extends FormBase {
       $form_state->setRedirectUrl(Utils::selectBackUrl('semanticvariable'));
     }
 
+  }
+
+  function backUrl() {
+    $uid = \Drupal::currentUser()->id();
+    $previousUrl = Utils::trackingGetPreviousUrl($uid, 'sem.add_semantic_variable');
+    if ($previousUrl) {
+      $response = new RedirectResponse($previousUrl);
+      $response->send();
+      return;
+    }
   }
 
 }
