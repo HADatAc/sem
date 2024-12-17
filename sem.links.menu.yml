@@ -6,7 +6,7 @@
 #  weight: 90
 #  requirements:
 #    _permission: 'access content'
-    
+
 sem.search_option:
   title: Search Semantic Elements
   description: Search Semantic Elements
@@ -17,7 +17,7 @@ sem.search_option:
   weight: 2
   requirements:
    _permission: 'access content'
-   
+
 sem.manage_semantic_variable:
   title: Manage Semantic Variables
   description: Manage Semantic Variables
@@ -25,7 +25,7 @@ sem.manage_semantic_variable:
   route_parameters:
     elementtype: 'semanticvariable'
     page: '1'
-    pagesize: '10'
+    pagesize: '9'
   parent: std.top_level
   menu_name: main
   weight: 26
@@ -40,7 +40,7 @@ sem.manage_semantic_data_dictionary:
   route_parameters:
     elementtype: 'semanticdatadictionary'
     page: '1'
-    pagesize: '10'
+    pagesize: '9'
   parent: std.top_level
   menu_name: main
   weight: 27
@@ -63,7 +63,7 @@ sem.manage_semantic_data_dictionary:
 #sem.admin_settings_link:
 #  title: Semantic Variable Config
 #  description: Semantic Variable Settings
-#  menu_name: main 
+#  menu_name: main
 #  route_name: sem.admin_settings_custom
 #  parent: sem.admin_settings_link
 #  weight: 10
