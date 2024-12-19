@@ -566,6 +566,7 @@ class EditSemanticDataDictionaryForm extends FormBase {
                 'elementtype' => 'unit',
               ], ['query' => ['field_id' => 'variable_unit_' . $delta]])->toString(), // Passa o ID via query string
               'data-field-id' => 'variable_unit_' . $delta, // Identificador do campo
+              'data-search-value' => $variable['unit'],
             ],
           ],
           'bottom' => [
