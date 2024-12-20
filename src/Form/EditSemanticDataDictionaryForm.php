@@ -562,7 +562,7 @@ class EditSemanticDataDictionaryForm extends FormBase {
               'data-dialog-type' => 'modal', // Tipo de modal
               'data-dialog-options' => json_encode(['width' => 800]), // Opções do modal
               'data-url' => Url::fromRoute('rep.tree_form', [
-                'mode' => 'browse',
+                'mode' => 'modal',
                 'elementtype' => 'unit',
               ], ['query' => ['field_id' => 'variable_unit_' . $delta]])->toString(), // Passa o ID via query string
               'data-field-id' => 'variable_unit_' . $delta, // Identificador do campo
