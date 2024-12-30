@@ -95,7 +95,7 @@ class EditSemanticDataDictionaryForm extends FormBase {
 
     $form['semantic_data_dictionary_title'] = [
       '#type' => 'markup',
-      '#markup' => '<h3>Edit Semantic Data Dictionary</h3><br>',
+      '#markup' => '<h3 class="mt-5">Edit Semantic Data Dictionary</h3><br>',
     ];
 
     $form['current_state'] = [
@@ -501,22 +501,49 @@ class EditSemanticDataDictionaryForm extends FormBase {
             '#markup' => '</div>',
           ),
         ),
-        'attribute' => array(
-          'top' => array(
+        // 'attribute' => array(
+        //   'top' => array(
+        //     '#type' => 'markup',
+        //     '#markup' => '<div class="pt-3 col border border-white">',
+        //   ),
+        //   'main' => array(
+        //     '#type' => 'textfield',
+        //     '#name' => 'variable_attribute_' . $delta,
+        //     '#value' => $variable['attribute'],
+        //     '#autocomplete_route_name' => 'sem.semanticvariable_attribute_autocomplete',
+        //   ),
+        //   'bottom' => array(
+        //     '#type' => 'markup',
+        //     '#markup' => '</div>',
+        //   ),
+        // ),
+        'attribute' => [
+          'top' => [
             '#type' => 'markup',
             '#markup' => '<div class="pt-3 col border border-white">',
-          ),
-          'main' => array(
+          ],
+          'main' => [
             '#type' => 'textfield',
             '#name' => 'variable_attribute_' . $delta,
             '#value' => $variable['attribute'],
-            '#autocomplete_route_name' => 'sem.semanticvariable_attribute_autocomplete',
-          ),
-          'bottom' => array(
+            '#attributes' => [
+              'class' => ['open-tree-modal'],
+              'data-dialog-type' => 'modal',
+              'data-dialog-options' => json_encode(['width' => 800]),
+              'data-url' => Url::fromRoute('rep.tree_form', [
+                'mode' => 'modal',
+                'elementtype' => 'attribute,unit',
+              ], ['query' => ['field_id' => 'variable_attribute_' . $delta]])->toString(),
+              'data-field-id' => 'variable_attribute_' . $delta,
+              'data-search-value' => $variable['attribute'],
+              'data-elementtype' => 'attribute,unit',
+            ],
+          ],
+          'bottom' => [
             '#type' => 'markup',
             '#markup' => '</div>',
-          ),
-        ),
+          ],
+        ],
         'is_attribute_of' => array(
           'top' => array(
             '#type' => 'markup',
@@ -558,15 +585,16 @@ class EditSemanticDataDictionaryForm extends FormBase {
             '#name' => 'variable_unit_' . $delta,
             '#value' => $variable['unit'],
             '#attributes' => [
-              'class' => ['open-tree-modal'], // Classe identificadora para o modal
-              'data-dialog-type' => 'modal', // Tipo de modal
-              'data-dialog-options' => json_encode(['width' => 800]), // Opções do modal
+              'class' => ['open-tree-modal'],
+              'data-dialog-type' => 'modal',
+              'data-dialog-options' => json_encode(['width' => 800]),
               'data-url' => Url::fromRoute('rep.tree_form', [
                 'mode' => 'modal',
                 'elementtype' => 'unit',
-              ], ['query' => ['field_id' => 'variable_unit_' . $delta]])->toString(), // Passa o ID via query string
-              'data-field-id' => 'variable_unit_' . $delta, // Identificador do campo
+              ], ['query' => ['field_id' => 'variable_unit_' . $delta]])->toString(),
+              'data-field-id' => 'variable_unit_' . $delta,
               'data-search-value' => $variable['unit'],
+              'data-elementtype' => 'unit',
             ],
           ],
           'bottom' => [
