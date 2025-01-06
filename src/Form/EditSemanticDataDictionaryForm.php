@@ -516,11 +516,11 @@ class EditSemanticDataDictionaryForm extends FormBase {
               'data-dialog-options' => json_encode(['width' => 800]),
               'data-url' => Url::fromRoute('rep.tree_form', [
                 'mode' => 'modal',
-                'elementtype' => 'attribute,unit',
+                'elementtype' => 'attribute',
               ], ['query' => ['field_id' => 'variable_attribute_' . $delta]])->toString(),
               'data-field-id' => 'variable_attribute_' . $delta,
               'data-search-value' => $variable['attribute'],
-              'data-elementtype' => 'attribute,unit',
+              'data-elementtype' => 'attribute',
             ],
           ],
           'bottom' => [
