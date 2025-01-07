@@ -570,7 +570,6 @@ class EditSemanticDataDictionaryForm extends FormBase {
             '#markup' => '</div>',
           ],
         ],
-
         'time' => array(
           'top' => array(
             '#type' => 'markup',
@@ -834,22 +833,6 @@ class EditSemanticDataDictionaryForm extends FormBase {
             '#markup' => '</div>',
           ),
         ),
-        // 'entity' => array(
-        //   'top' => array(
-        //     '#type' => 'markup',
-        //     '#markup' => '<div class="pt-3 col border border-white">',
-        //   ),
-        //   'main' => array(
-        //     '#type' => 'textfield',
-        //     '#name' => 'object_entity_' . $delta,
-        //     '#value' => $object['entity'],
-        //     '#autocomplete_route_name' => 'sem.semanticvariable_entity_autocomplete',
-        //   ),
-        //   'bottom' => array(
-        //     '#type' => 'markup',
-        //     '#markup' => '</div>',
-        //   ),
-        // ),
         'entity' => [
           'top' => [
             '#type' => 'markup',
