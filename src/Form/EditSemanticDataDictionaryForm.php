@@ -51,6 +51,9 @@ class EditSemanticDataDictionaryForm extends FormBase {
     $tables = new Tables;
     $namespaces = $tables->getNamespaces();
 
+    // MODAL
+    $form['#attached']['library'][] = 'rep/rep_modal'; // Biblioteca personalizada do módulo
+    $form['#attached']['library'][] = 'core/drupal.dialog'; // Biblioteca do modal do Drupal
 
     if ($state === 'init') {
       // READ SEMANTIC_DATA_DICTIONARY
@@ -92,7 +95,7 @@ class EditSemanticDataDictionaryForm extends FormBase {
 
     $form['semantic_data_dictionary_title'] = [
       '#type' => 'markup',
-      '#markup' => '<h3>Edit Semantic Data Dictionary</h3><br>',
+      '#markup' => '<h3 class="mt-5">Edit Semantic Data Dictionary</h3><br>',
     ];
 
     $form['current_state'] = [
@@ -498,22 +501,33 @@ class EditSemanticDataDictionaryForm extends FormBase {
             '#markup' => '</div>',
           ),
         ),
-        'attribute' => array(
-          'top' => array(
+        'attribute' => [
+          'top' => [
             '#type' => 'markup',
             '#markup' => '<div class="pt-3 col border border-white">',
-          ),
-          'main' => array(
+          ],
+          'main' => [
             '#type' => 'textfield',
             '#name' => 'variable_attribute_' . $delta,
             '#value' => $variable['attribute'],
-            '#autocomplete_route_name' => 'sem.semanticvariable_attribute_autocomplete',
-          ),
-          'bottom' => array(
+            '#attributes' => [
+              'class' => ['open-tree-modal'],
+              'data-dialog-type' => 'modal',
+              'data-dialog-options' => json_encode(['width' => 800]),
+              'data-url' => Url::fromRoute('rep.tree_form', [
+                'mode' => 'modal',
+                'elementtype' => 'attribute',
+              ], ['query' => ['field_id' => 'variable_attribute_' . $delta]])->toString(),
+              'data-field-id' => 'variable_attribute_' . $delta,
+              'data-search-value' => $variable['attribute'],
+              'data-elementtype' => 'attribute',
+            ],
+          ],
+          'bottom' => [
             '#type' => 'markup',
             '#markup' => '</div>',
-          ),
-        ),
+          ],
+        ],
         'is_attribute_of' => array(
           'top' => array(
             '#type' => 'markup',
@@ -529,22 +543,33 @@ class EditSemanticDataDictionaryForm extends FormBase {
             '#markup' => '</div>',
           ),
         ),
-        'unit' => array(
-          'top' => array(
+        'unit' => [
+          'top' => [
             '#type' => 'markup',
             '#markup' => '<div class="pt-3 col border border-white">',
-          ),
-          'main' => array(
+          ],
+          'main' => [
             '#type' => 'textfield',
             '#name' => 'variable_unit_' . $delta,
             '#value' => $variable['unit'],
-            //'#autocomplete_route_name' => 'sem.semanticvariable_attribute_autocomplete',
-          ),
-          'bottom' => array(
+            '#attributes' => [
+              'class' => ['open-tree-modal'],
+              'data-dialog-type' => 'modal',
+              'data-dialog-options' => json_encode(['width' => 800]),
+              'data-url' => Url::fromRoute('rep.tree_form', [
+                'mode' => 'modal',
+                'elementtype' => 'unit',
+              ], ['query' => ['field_id' => 'variable_unit_' . $delta]])->toString(),
+              'data-field-id' => 'variable_unit_' . $delta,
+              'data-search-value' => $variable['unit'],
+              'data-elementtype' => 'unit',
+            ],
+          ],
+          'bottom' => [
             '#type' => 'markup',
             '#markup' => '</div>',
-          ),
-        ),
+          ],
+        ],
         'time' => array(
           'top' => array(
             '#type' => 'markup',
@@ -808,22 +833,33 @@ class EditSemanticDataDictionaryForm extends FormBase {
             '#markup' => '</div>',
           ),
         ),
-        'entity' => array(
-          'top' => array(
+        'entity' => [
+          'top' => [
             '#type' => 'markup',
             '#markup' => '<div class="pt-3 col border border-white">',
-          ),
-          'main' => array(
+          ],
+          'main' => [
             '#type' => 'textfield',
             '#name' => 'object_entity_' . $delta,
             '#value' => $object['entity'],
-            '#autocomplete_route_name' => 'sem.semanticvariable_entity_autocomplete',
-          ),
-          'bottom' => array(
+            '#attributes' => [
+              'class' => ['open-tree-modal'],
+              'data-dialog-type' => 'modal',
+              'data-dialog-options' => json_encode(['width' => 800]),
+              'data-url' => Url::fromRoute('rep.tree_form', [
+                'mode' => 'modal',
+                'elementtype' => 'entity',
+              ], ['query' => ['field_id' => 'object_entity_' . $delta]])->toString(),
+              'data-field-id' => 'object_entity_' . $delta,
+              'data-search-value' => $object['entity'],
+              'data-elementtype' => 'entity',
+            ],
+          ],
+          'bottom' => [
             '#type' => 'markup',
             '#markup' => '</div>',
-          ),
-        ),
+          ],
+        ],
         'role' => array(
           'top' => array(
             '#type' => 'markup',
@@ -1431,6 +1467,27 @@ class EditSemanticDataDictionaryForm extends FormBase {
     }
 
   }
+
+  /**
+   * Callback para abrir o modal com o formulário.
+   */
+  public function openTreeModalCallback(array &$form, FormStateInterface $form_state) {
+    $response = new AjaxResponse();
+
+    // Obtenha a URL para carregar o modal (usando data-url do campo).
+    $triggering_element = $form_state->getTriggeringElement();
+    $url = $triggering_element['#attributes']['data-url'];
+
+    // Adicione o comando para abrir o modal com o formulário.
+    $response->addCommand(new OpenModalDialogCommand(
+      $this->t('Tree Form'),
+      '<iframe src="' . $url . '" style="width: 100%; height: 400px; border: none;"></iframe>',
+      ['width' => '800']
+    ));
+
+    return $response;
+  }
+
 
   function backUrl() {
     $uid = \Drupal::currentUser()->id();
