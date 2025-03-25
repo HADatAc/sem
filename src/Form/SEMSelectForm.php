@@ -443,7 +443,7 @@ class SEMSelectForm extends FormBase {
         'left_column' => [
           '#type' => 'container',
           '#attributes' => [
-            'class' => ['left-column', 'col-md-5', 'text-align-center'],
+            'class' => ['col-md-5', 'd-flex', 'justify-content-center', 'align-items-center'],
             'style' => 'margin-bottom:0!important;',
           ],
           'image' => [
@@ -453,6 +453,7 @@ class SEMSelectForm extends FormBase {
               'src' => $image_uri,
               'alt' => $header_text,
               'style' => 'max-width: 70%; height: auto;',
+              'class' => ['img-fluid', 'mb-0', 'border', 'border-5', 'rounded', 'rounded-5'],
             ],
           ],
         ],
