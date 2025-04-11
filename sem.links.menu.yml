@@ -26,7 +26,7 @@ sem.manage_semantic_variable:
     elementtype: 'semanticvariable'
     page: '1'
     pagesize: '9'
-  parent: std.top_level
+  parent: std.manage_top_level
   menu_name: main
   weight: 26
   requirements:
@@ -41,7 +41,7 @@ sem.manage_semantic_data_dictionary:
     elementtype: 'semanticdatadictionary'
     page: '1'
     pagesize: '9'
-  parent: std.top_level
+  parent: std.manage_top_level
   menu_name: main
   weight: 27
   requirements:
