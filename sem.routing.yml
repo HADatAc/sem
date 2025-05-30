@@ -13,7 +13,7 @@ sem.search:
     pagesize: '12'
   requirements:
     _permission: 'access content'
-    _custom_access_check: 'TRUE'    
+    _custom_access_check: 'TRUE'
   options:
     no_cache: 'TRUE'
 
@@ -25,7 +25,7 @@ sem.list_element:
     _form: '\Drupal\sem\Form\SEMListForm'
   requirements:
     _permission: 'access content'
-    _custom_access_check: 'TRUE'    
+    _custom_access_check: 'TRUE'
   options:
     no_cache: 'TRUE'
 
@@ -35,7 +35,7 @@ sem.select_element:
     _form: '\Drupal\sem\Form\SEMSelectForm'
   requirements:
     _permission: 'access content'
-    _custom_access_check: 'TRUE'    
+    _custom_access_check: 'TRUE'
   options:
     no_cache: 'TRUE'
 
@@ -45,10 +45,10 @@ sem.add_semantic_variable:
   path: 'sem/manage/addsemanticvariable'
   defaults:
     _form: '\Drupal\sem\Form\AddSemanticVariableForm'
-    _title: 'Add Semantic Variable'    
+    _title: 'Add Semantic Variable'
   requirements:
     _permission: 'access content'
-    _custom_access_check: 'TRUE'    
+    _custom_access_check: 'TRUE'
   options:
     no_cache: 'TRUE'
 
@@ -56,10 +56,10 @@ sem.edit_semantic_variable:
   path: 'sem/manage/editsemanticvariable/{semanticvariableuri}'
   defaults:
     _form: '\Drupal\sem\Form\EditSemanticVariableForm'
-    _title: 'Edit Semantic Variable'    
+    _title: 'Edit Semantic Variable'
   requirements:
-    _permission: 'access content'  
-    _custom_access_check: 'TRUE'      
+    _permission: 'access content'
+    _custom_access_check: 'TRUE'
   options:
     no_cache: 'TRUE'
 
@@ -68,10 +68,10 @@ sem.edit_semantic_variable:
 sem.manage_data_dictionary:
   path: 'sem/manage/datadictionary'
   defaults:
-    _title: 'Manage Data Dictionary'    
+    _title: 'Manage Data Dictionary'
   requirements:
     _permission: 'access content'
-    _custom_access_check: 'TRUE'    
+    _custom_access_check: 'TRUE'
   options:
     no_cache: 'TRUE'
 
@@ -81,10 +81,10 @@ sem.add_sdd:
   path: 'sem/manage/addsdd'
   defaults:
     _form: '\Drupal\sem\Form\AddSDDForm'
-    _title: 'Add SDD (Metadata Template)'    
+    _title: 'Add SDD (Metadata Template)'
   requirements:
     _permission: 'access content'
-    _custom_access_check: 'TRUE'    
+    _custom_access_check: 'TRUE'
   options:
     no_cache: 'TRUE'
 
@@ -93,10 +93,10 @@ sem.add_sdd:
 sem.manage_semantic_data_dictionary:
   path: 'sem/manage/semanticdatadictionary'
   defaults:
-    _title: 'Manage Semantic Data Dictionary'    
+    _title: 'Manage Semantic Data Dictionary'
   requirements:
     _permission: 'access content'
-    _custom_access_check: 'TRUE'    
+    _custom_access_check: 'TRUE'
   options:
     no_cache: 'TRUE'
 
@@ -106,7 +106,7 @@ sem.add_semantic_data_dictionary:
     _form: '\Drupal\sem\Form\AddSemanticDataDictionaryForm'
   requirements:
     _permission: 'access content'
-    _custom_access_check: 'TRUE'    
+    _custom_access_check: 'TRUE'
   options:
     no_cache: 'TRUE'
 
@@ -116,7 +116,17 @@ sem.edit_semantic_data_dictionary:
     _form: '\Drupal\sem\Form\EditSemanticDataDictionaryForm'
   requirements:
     _permission: 'access content'
-    _custom_access_check: 'TRUE'    
+    _custom_access_check: 'TRUE'
+  options:
+    no_cache: 'TRUE'
+
+sem.view_semantic_data_dictionary:
+  path: 'sem/manage/viewsemanticdatadictionary/{state}/{uri}'
+  defaults:
+    _form: '\Drupal\sem\Form\ViewSemanticDataDictionaryForm'
+  requirements:
+    _permission: 'access content'
+    _custom_access_check: 'TRUE'
   options:
     no_cache: 'TRUE'
 
