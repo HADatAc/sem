@@ -55,7 +55,7 @@ class ViewSemanticDataDictionaryForm extends FormBase {
     $form['#attached']['library'][] = 'rep/rep_modal'; // Biblioteca personalizada do módulo
     $form['#attached']['library'][] = 'core/drupal.dialog'; // Biblioteca do modal do Drupal
 
-    if ($state === 'init') {
+    if ($state === 'basic') {
       // READ SEMANTIC_DATA_DICTIONARY
       $api = \Drupal::service('rep.api_connector');
       $uri_decode=base64_decode($uri);
@@ -93,10 +93,10 @@ class ViewSemanticDataDictionaryForm extends FormBase {
     // SET SEPARATOR
     $separator = '<div class="w-100"></div>';
 
-    $form['semantic_data_dictionary_title'] = [
-      '#type' => 'markup',
-      '#markup' => '<h3 class="mt-5">Edit Semantic Data Dictionary</h3><br>',
-    ];
+    // $form['semantic_data_dictionary_title'] = [
+    //   '#type' => 'markup',
+    //   '#markup' => '<h3 class="mt-5">Edit Semantic Data Dictionary</h3><br>',
+    // ];
 
     $form['current_state'] = [
       '#type' => 'hidden',
@@ -166,16 +166,19 @@ class ViewSemanticDataDictionaryForm extends FormBase {
         '#type' => 'textfield',
         '#title' => $this->t('Name'),
         '#default_value' => $name,
+        '#disabled' => TRUE,
       ];
       $form['semantic_data_dictionary_version'] = [
         '#type' => 'textfield',
         '#title' => $this->t('Version'),
         '#default_value' => $version,
+        '#disabled' => TRUE,
       ];
       $form['semantic_data_dictionary_description'] = [
         '#type' => 'textarea',
         '#title' => $this->t('Description'),
         '#default_value' => $description,
+        '#disabled' => TRUE,
       ];
 
     }
@@ -200,6 +203,7 @@ class ViewSemanticDataDictionaryForm extends FormBase {
           'class' => array('p-3', 'bg-light', 'text-dark', 'row', 'border', 'border-secondary', 'rounded'),
           'id' => 'custom-table-wrapper',
         ),
+        '#disabled' => TRUE, // Disable the form to prevent editing
       );
 
       $form['variables']['header'] = array(
@@ -227,12 +231,12 @@ class ViewSemanticDataDictionaryForm extends FormBase {
         '#markup' => '<div class="p-3 col">',
       );
 
-      $form['variables']['actions']['add_row'] = [
-        '#type' => 'submit',
-        '#value' => $this->t('New Variable'),
-        '#name' => 'new_variable',
-        '#attributes' => array('class' => array('btn', 'btn-sm', 'add-element-button')),
-      ];
+      // $form['variables']['actions']['add_row'] = [
+      //   '#type' => 'submit',
+      //   '#value' => $this->t('New Variable'),
+      //   '#name' => 'new_variable',
+      //   '#attributes' => array('class' => array('btn', 'btn-sm', 'add-element-button')),
+      // ];
 
       $form['variables']['actions']['bottom'] = array(
         '#type' => 'markup',
@@ -255,6 +259,7 @@ class ViewSemanticDataDictionaryForm extends FormBase {
           'class' => array('p-3', 'bg-light', 'text-dark', 'row', 'border', 'border-secondary', 'rounded'),
           'id' => 'custom-table-wrapper',
         ),
+        '#disabled' => TRUE, // Disable the form to prevent editing
       );
 
       $form['objects']['header'] = array(
@@ -281,12 +286,12 @@ class ViewSemanticDataDictionaryForm extends FormBase {
         '#markup' => '<div class="p-3 col">',
       );
 
-      $form['objects']['actions']['add_row'] = [
-        '#type' => 'submit',
-        '#value' => $this->t('New Object'),
-        '#name' => 'new_object',
-        '#attributes' => array('class' => array('btn', 'btn-sm', 'add-element-button')),
-      ];
+      // $form['objects']['actions']['add_row'] = [
+      //   '#type' => 'submit',
+      //   '#value' => $this->t('New Object'),
+      //   '#name' => 'new_object',
+      //   '#attributes' => array('class' => array('btn', 'btn-sm', 'add-element-button')),
+      // ];
 
       $form['objects']['actions']['bottom'] = array(
         '#type' => 'markup',
@@ -315,6 +320,7 @@ class ViewSemanticDataDictionaryForm extends FormBase {
           'class' => array('p-3', 'bg-light', 'text-dark', 'row', 'border', 'border-secondary', 'rounded'),
           'id' => 'custom-table-wrapper',
         ),
+        '#disabled' => TRUE, // Disable the form to prevent editing
       );
 
       $form['codes']['header'] = array(
@@ -339,12 +345,12 @@ class ViewSemanticDataDictionaryForm extends FormBase {
         '#markup' => '<div class="p-3 col">',
       );
 
-      $form['codes']['actions']['add_row'] = [
-        '#type' => 'submit',
-        '#value' => $this->t('New Code'),
-        '#name' => 'new_code',
-        '#attributes' => array('class' => array('btn', 'btn-sm', 'add-element-button')),
-      ];
+      // $form['codes']['actions']['add_row'] = [
+      //   '#type' => 'submit',
+      //   '#value' => $this->t('New Code'),
+      //   '#name' => 'new_code',
+      //   '#attributes' => array('class' => array('btn', 'btn-sm', 'add-element-button')),
+      // ];
 
       $form['codes']['actions']['bottom'] = array(
         '#type' => 'markup',
@@ -370,10 +376,10 @@ class ViewSemanticDataDictionaryForm extends FormBase {
     // ];
     $form['cancel_submit'] = [
       '#type' => 'submit',
-      '#value' => $this->t('Cancel'),
+      '#value' => $this->t('Back'),
       '#name' => 'back',
       '#attributes' => [
-        'class' => ['btn', 'btn-primary', 'cancel-button'],
+        'class' => ['btn', 'btn-primary', 'back-button'],
       ],
     ];
     $form['bottom_space'] = [
@@ -430,7 +436,7 @@ class ViewSemanticDataDictionaryForm extends FormBase {
 
     // BUILD NEW URL
     $root_url = \Drupal::request()->getBaseUrl();
-    $newUrl = $root_url . REPGUI::EDIT_SEMANTIC_DATA_DICTIONARY . $state . '/' . base64_encode($basic['uri']);
+    $newUrl = $root_url . REPGUI::VIEW_SEMANTIC_DATA_DICTIONARY . $state . '/' . base64_encode($basic['uri']);
 
     // REDIRECT TO NEW URL
     $response = new AjaxResponse();
@@ -1491,7 +1497,7 @@ class ViewSemanticDataDictionaryForm extends FormBase {
 
   function backUrl() {
     $uid = \Drupal::currentUser()->id();
-    $previousUrl = Utils::trackingGetPreviousUrl($uid, 'sem.edit_semantic_data_dictionary');
+    $previousUrl = Utils::trackingGetPreviousUrl($uid, 'sem.view_semantic_data_dictionary');
     if ($previousUrl) {
       $response = new RedirectResponse($previousUrl);
       $response->send();

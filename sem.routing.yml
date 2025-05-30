@@ -123,6 +123,7 @@ sem.edit_semantic_data_dictionary:
 sem.view_semantic_data_dictionary:
   path: 'sem/manage/viewsemanticdatadictionary/{state}/{uri}'
   defaults:
+    _title: 'View Semantic Data Dictionary'
     _form: '\Drupal\sem\Form\ViewSemanticDataDictionaryForm'
   requirements:
     _permission: 'access content'
