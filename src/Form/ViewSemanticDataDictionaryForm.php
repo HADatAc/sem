@@ -47,6 +47,16 @@ class ViewSemanticDataDictionaryForm extends FormBase {
    */
   public function buildForm(array $form, FormStateInterface $form_state, $state=NULL, $uri=NULL) {
 
+      // ————————————> LIMPA O “CACHE” DE STATE
+    \Drupal::state()->delete('my_form_basic');
+    \Drupal::state()->delete('my_form_variables');
+    \Drupal::state()->delete('my_form_objects');
+    \Drupal::state()->delete('my_form_codes');
+
+    $form['#cache']['max-age'] = 0;
+    $form['#prefix']      = '<div id="sdd-modal-form-wrapper">';
+    $form['#suffix']      = '</div>';
+
     // INITIALIZE NS TABLE
     $tables = new Tables;
     $namespaces = $tables->getNamespaces();
@@ -104,14 +114,14 @@ class ViewSemanticDataDictionaryForm extends FormBase {
     ];
 
     // Container for pills and content.
-    $form['pills_card'] = [
-      '#type' => 'container',
-      '#attributes' => [
-        'class' => ['nav', 'nav-pills', 'nav-justified', 'mb-3'],
-        'id' => 'pills-card-container',
-        'role' => 'tablist',
-      ],
-    ];
+    // $form['pills_card'] = [
+    //   '#type' => 'container',
+    //   '#attributes' => [
+    //     'class' => ['nav', 'nav-pills', 'nav-justified', 'mb-3'],
+    //     'id' => 'pills-card-container',
+    //     'role' => 'tablist',
+    //   ],
+    // ];
 
     // Define pills as links with AJAX callback.
     $states = [
@@ -120,21 +130,42 @@ class ViewSemanticDataDictionaryForm extends FormBase {
       'codebook' => 'Codebook'
     ];
 
+    // foreach ($states as $key => $label) {
+    //   $form['pills_card'][$key] = [
+    //     '#type' => 'button',
+    //     '#value' => $label,
+    //     '#name' => 'button_' . $key,
+    //     '#attributes' => [
+    //       'class' => ['nav-link', $state === $key ? 'active' : ''],
+    //       'data-state' => $key,
+    //       'role' => 'presentation',
+    //     ],
+    //     '#ajax' => [
+    //       'callback' => '::pills_card_callback',
+    //       'event'    => 'click',
+    //       'wrapper'  => 'sdd-modal-form-wrapper',
+    //       'progress' => ['type' => 'none'],
+    //     ],
+    //   ];
+    // }
+    // Pills:
+    $form['pills_card'] = [
+      '#type' => 'container',
+      '#attributes' => [
+        'class' => ['nav', 'nav-pills', 'nav-justified', 'mb-3'],
+        'role'  => 'tablist',
+      ],
+    ];
     foreach ($states as $key => $label) {
       $form['pills_card'][$key] = [
         '#type' => 'button',
         '#value' => $label,
-        '#name' => 'button_' . $key,
-        '#attributes' => [
-          'class' => ['nav-link', $state === $key ? 'active' : ''],
-          'data-state' => $key,
-          'role' => 'presentation',
-        ],
+        '#name' => 'button_'.$key,
+        '#attributes' => ['class'=>['nav-link', $state===$key?'active':'']],
         '#ajax' => [
-          'callback' => '::pills_card_callback',
-          'event' => 'click',
-          'wrapper' => 'pills-card-container',
-          'progress' => ['type' => 'none'],
+          'callback' => '::pillsCardCallback',
+          'wrapper'  => 'sdd-modal-form-wrapper',
+          'event'    => 'click',
         ],
       ];
     }
@@ -143,6 +174,11 @@ class ViewSemanticDataDictionaryForm extends FormBase {
     $form['state'] = [
       '#type' => 'hidden',
       '#value' => $state,
+    ];
+
+    $form['uri'] = [
+      '#type'  => 'hidden',
+      '#value' => $uri,
     ];
 
     /* ========================== BASIC ========================= */
@@ -167,6 +203,9 @@ class ViewSemanticDataDictionaryForm extends FormBase {
         '#title' => $this->t('Name'),
         '#default_value' => $name,
         '#disabled' => TRUE,
+        '#wrapper_attributes' => [
+          'class' => ['mt-4'],
+        ],
       ];
       $form['semantic_data_dictionary_version'] = [
         '#type' => 'textfield',
@@ -361,10 +400,10 @@ class ViewSemanticDataDictionaryForm extends FormBase {
 
     /* ======================= COMMON BOTTOM ======================= */
 
-    $form['space'] = [
-      '#type' => 'markup',
-      '#markup' => '<br><br>',
-    ];
+    // $form['space'] = [
+    //   '#type' => 'markup',
+    //   '#markup' => '<br><br>',
+    // ];
 
     // $form['save_submit'] = [
     //   '#type' => 'submit',
@@ -374,18 +413,18 @@ class ViewSemanticDataDictionaryForm extends FormBase {
     //     'class' => ['btn', 'btn-primary', 'save-button'],
     //   ],
     // ];
-    $form['cancel_submit'] = [
-      '#type' => 'submit',
-      '#value' => $this->t('Back'),
-      '#name' => 'back',
-      '#attributes' => [
-        'class' => ['btn', 'btn-primary', 'back-button'],
-      ],
-    ];
-    $form['bottom_space'] = [
-      '#type' => 'item',
-      '#title' => t('<br><br>'),
-    ];
+    // $form['cancel_submit'] = [
+    //   '#type' => 'submit',
+    //   '#value' => $this->t('Back'),
+    //   '#name' => 'back',
+    //   '#attributes' => [
+    //     'class' => ['btn', 'btn-primary', 'back-button'],
+    //   ],
+    // ];
+    // $form['bottom_space'] = [
+    //   '#type' => 'item',
+    //   '#title' => t('<br><br>'),
+    // ];
 
     //$form['#attached']['library'][] = 'sem/sem_list';
 
@@ -411,37 +450,82 @@ class ViewSemanticDataDictionaryForm extends FormBase {
     }
   }
 
-  public function pills_card_callback(array &$form, FormStateInterface $form_state) {
+  // public function pills_card_callback(array &$form, FormStateInterface $form_state) {
 
-    // RETRIEVE CURRENT STATE AND SAVE IT ACCORDINGLY
-    $currentState = $form_state->getValue('state');
-    if ($currentState == 'basic') {
+  //   // RETRIEVE CURRENT STATE AND SAVE IT ACCORDINGLY
+  //   $currentState = $form_state->getValue('state');
+  //   if ($currentState == 'basic') {
+  //     $this->updateBasic($form_state);
+  //   }
+  //   if ($currentState == 'dictionary') {
+  //     $this->updateVariables($form_state);
+  //     $this->updateObjects($form_state);
+  //   }
+  //   if ($currentState == 'codebook') {
+  //     $this->updateCodes($form_state);
+  //   }
+
+  //   // Need to retrieve $basic because it contains the semantic data dictionary's URI
+  //   $basic = \Drupal::state()->get('my_form_basic');
+
+  //   // RETRIEVE FUTURE STATE
+  //   $triggering_element = $form_state->getTriggeringElement();
+  //   $parts = explode('_', $triggering_element['#name']);
+  //   $state = (isset($parts) && is_array($parts)) ? end($parts) : null;
+
+  //   // BUILD NEW URL
+  //   $root_url = \Drupal::request()->getBaseUrl();
+  //   $newUrl = $root_url . REPGUI::VIEW_SEMANTIC_DATA_DICTIONARY . $state . '/' . base64_encode($basic['uri']);
+
+  //   // REDIRECT TO NEW URL
+  //   $response = new AjaxResponse();
+  //   $response->addCommand(new RedirectCommand($newUrl));
+
+  //   return $response;
+  // }
+  public function pillsCardCallback(array &$form, FormStateInterface $form_state) {
+    // 1) Guardar edições do tab atual.
+    $current = $form_state->getValue('state');
+    if ($current === 'basic') {
       $this->updateBasic($form_state);
     }
-    if ($currentState == 'dictionary') {
+    elseif ($current === 'dictionary') {
       $this->updateVariables($form_state);
       $this->updateObjects($form_state);
     }
-    if ($currentState == 'codebook') {
+    else {
       $this->updateCodes($form_state);
     }
 
-    // Need to retrieve $basic because it contains the semantic data dictionary's URI
-    $basic = \Drupal::state()->get('my_form_basic');
+    // 2) Descobrir qual pill foi clicada.
+    $trigger = $form_state->getTriggeringElement();
+    $parts = explode('_', $trigger['#name']);
+    $new_state = end($parts);
 
-    // RETRIEVE FUTURE STATE
-    $triggering_element = $form_state->getTriggeringElement();
-    $parts = explode('_', $triggering_element['#name']);
-    $state = (isset($parts) && is_array($parts)) ? end($parts) : null;
+    $uri = $form_state->getValue('uri');
 
-    // BUILD NEW URL
-    $root_url = \Drupal::request()->getBaseUrl();
-    $newUrl = $root_url . REPGUI::VIEW_SEMANTIC_DATA_DICTIONARY . $state . '/' . base64_encode($basic['uri']);
+    try {
+      $rebuilt = \Drupal::formBuilder()->getForm(
+        static::class,
+        $form_state,
+        $new_state,
+        $uri
+      );
+    }
+    catch (\Exception $e) {
+      \Drupal::logger('sem')->error('Erro ao reconstruir form: @msg em @file linha @line',
+        [
+          '@msg' => $e->getMessage(),
+          '@file' => $e->getFile(),
+          '@line' => $e->getLine(),
+        ]
+      );
+      // rethrow para não mascarar o 500:
+      throw $e;
+    }
 
-    // REDIRECT TO NEW URL
     $response = new AjaxResponse();
-    $response->addCommand(new RedirectCommand($newUrl));
-
+    $response->addCommand(new HtmlCommand('#sdd-modal-form-wrapper', $rebuilt));
     return $response;
   }
 
@@ -1472,37 +1556,6 @@ class ViewSemanticDataDictionaryForm extends FormBase {
       }
     }
 
-  }
-
-  /**
-   * Callback para abrir o modal com o formulário.
-   */
-  public function openTreeModalCallback(array &$form, FormStateInterface $form_state) {
-    $response = new AjaxResponse();
-
-    // Obtenha a URL para carregar o modal (usando data-url do campo).
-    $triggering_element = $form_state->getTriggeringElement();
-    $url = $triggering_element['#attributes']['data-url'];
-
-    // Adicione o comando para abrir o modal com o formulário.
-    $response->addCommand(new OpenModalDialogCommand(
-      $this->t('Tree Form'),
-      '<iframe src="' . $url . '" style="width: 100%; height: 400px; border: none;"></iframe>',
-      ['width' => '800']
-    ));
-
-    return $response;
-  }
-
-
-  function backUrl() {
-    $uid = \Drupal::currentUser()->id();
-    $previousUrl = Utils::trackingGetPreviousUrl($uid, 'sem.view_semantic_data_dictionary');
-    if ($previousUrl) {
-      $response = new RedirectResponse($previousUrl);
-      $response->send();
-      return;
-    }
   }
 
 }
