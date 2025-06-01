@@ -4,1330 +4,875 @@ namespace Drupal\sem\Form;
 
 use Drupal\Core\Form\FormBase;
 use Drupal\Core\Form\FormStateInterface;
-use Drupal\Core\Ajax\AjaxResponse;
-use Drupal\Core\Ajax\RedirectCommand;
-use Drupal\Core\Ajax\HtmlCommand;
 use Drupal\Core\Url;
-use Symfony\Component\HttpFoundation\RedirectResponse;
 use Drupal\rep\Constant;
 use Drupal\rep\Utils;
 use Drupal\rep\Entity\Tables;
 use Drupal\rep\Vocabulary\HASCO;
-use Drupal\rep\Vocabulary\REPGUI;
+use Symfony\Component\HttpFoundation\Request;
 
+/**
+ * Provides a tabbed form for viewing and editing a Semantic Data Dictionary (SDD).
+ *
+ * Esta versão utiliza tabs verticais em vez do antigo sistema de “pills”
+ * AJAX. Ao carregar, todas as secções (“Basic variables”, “Data Dictionary”,
+ * “Codebook”) são exibidas num único formulário dentro de um container
+ * de vertical tabs.
+ *
+ * Argumentos esperados em buildForm():
+ *   1. $form_title: (string|null) Texto que o chamador AJAX quer exibir
+ *      como título do modal (opcional).
+ *   2. $state: (string|null) Estado antes usado para saber qual tab estava
+ *      ativa (não usamos no mecanismo de tabs verticais, mas deixamos aqui
+ *      por compatibilidade).
+ *   3. $uri: (string|null) URI codificado em base64 do SDD a carregar.
+ *
+ * Ao submeter:
+ *   - Apaga o SDD antigo via REP API.
+ *   - Recria o SDD (JSON com “basic”).
+ *   - Itera sobre cada array de variáveis/objetos/códigos e chama a API
+ *     para criar cada elemento.
+ *   - Limpa caches e redireciona de volta (“Back”).
+ */
 class ViewSemanticDataDictionaryForm extends FormBase {
 
-  protected $state;
-
+  /**
+   * A instância do SDD carregado pela REP API.
+   *
+   * @var object|null
+   */
   protected $semanticDataDictionary;
 
-  public function getState() {
-    return $this->state;
-  }
-  public function setState($state) {
-    return $this->state = $state;
-  }
-
+  /**
+   * Retorna o SDD carregado.
+   *
+   * @return object|null
+   */
   public function getSemanticDataDictionary() {
     return $this->semanticDataDictionary;
   }
-  public function setSemanticDataDictionary($semanticDataDictionary) {
-    return $this->semanticDataDictionary = $semanticDataDictionary;
+
+  /**
+   * Define (armazena) o SDD carregado.
+   *
+   * @param object $sdd
+   *   Objeto SDD retornado pela REP API.
+   * @return object
+   */
+  public function setSemanticDataDictionary($sdd) {
+    return $this->semanticDataDictionary = $sdd;
   }
 
   /**
    * {@inheritdoc}
    */
   public function getFormId() {
-    return 'edit_semantic_data_dictionary_form';
+    return 'view_semantic_data_dictionary_form';
   }
 
   /**
    * {@inheritdoc}
+   *
+   * @param array $form
+   *   Array do formulário.
+   * @param \Drupal\Core\Form\FormStateInterface $form_state
+   *   Estado atual do FormState.
+   * @param string|null $form_title
+   *   Título a exibir no modal (opcional; quem chama via AJAX pode passá-lo).
+   * @param string|null $state
+   *   (Opcional) Estado anterior, hoje não usado para controlar qual tab
+   *   está aberta.
+   * @param string|null $uri
+   *   URI do SDD, codificado em base64.
+   *
+   * @return array
+   *   O formulário renderizável completo.
    */
-  public function buildForm(array $form, FormStateInterface $form_state, $state=NULL, $uri=NULL) {
+  public function buildForm(array $form, FormStateInterface $form_state, $form_title = NULL, $state = NULL, $uri = NULL) {
+    // 1) Impede qualquer tipo de cache nesta página.
+    $form['#cache']['max-age'] = 0;
 
-      // ————————————> LIMPA O “CACHE” DE STATE
+    // 2) Se o chamador enviar um título customizado, poderemos exibi-lo acima
+    //    do nosso container de tabs (ou simplesmente armazená-lo para uso
+    //    posterior). Para demonstração, vamos guardá-lo numa variável:
+    // if (!empty($form_title)) {
+    //   // Exemplo: podemos exibir como markup logo acima das tabs.
+    //   $form['modal_title'] = [
+    //     '#type' => 'markup',
+    //     '#markup' => '<h2>' . $this->t('@title', ['@title' => $form_title]) . '</h2>',
+    //     '#prefix' => '<div class="sdd-modal-header">',
+    //     '#suffix' => '</div>',
+    //   ];
+    // }
+
+    // 3) Envolvemos todo o form num DIV, para garantir consistência de tema.
+    $form['#prefix'] = '<div id="sdd-tabbed-form-wrapper">';
+    $form['#suffix'] = '</div>';
+
+    // 4) Inicializa a tabela de namespaces (usada pelos “tree-modal” se precisar).
+    $tables = new Tables();
+    $namespaces = $tables->getNamespaces();
+
+    // 5) Anexa as bibliotecas de modal ou dialog, caso ainda se usem popups
+    //    dentro deste form. Não é 100% obrigatório para apenas tabs, mas
+    //    mantemos caso haja “tree-dialog” ou seja preciso para operações.
+    $form['#attached']['library'][] = 'rep/rep_modal';
+    $form['#attached']['library'][] = 'core/drupal.dialog';
+
+    // ================================================================
+    // 1) Decodifica e busca o SDD via REP API a partir do $uri (base64).
+    // ================================================================
+    if (empty($uri)) {
+      // Se não veio URI, exibimos mensagem de erro e retornamos o form vazio.
+      \Drupal::messenger()->addError($this->t('No Semantic Data Dictionary URI provided.'));
+      return $form;
+    }
+    $decoded_uri = base64_decode($uri);
+    $api = \Drupal::service('rep.api_connector');
+    $sdd_object = $api->parseObjectResponse($api->getUri($decoded_uri), 'getUri');
+    if ($sdd_object === NULL) {
+      \Drupal::messenger()->addError($this->t('Failed to retrieve Semantic Data Dictionary.'));
+      return $form;
+    }
+    // Armazena o objeto carregado para uso nos helpers.
+    $this->setSemanticDataDictionary($sdd_object);
+
+    // ================================================================
+    // 2) Popula três arrays em memória:
+    //    a) $basic    => [ 'uri','name','version','description' ]
+    //    b) $variables => listPosition => [ coluna, atributo, is_attribute_of, unit, time, in_relation_to, was_derived_from ]
+    //    c) $objects   => listPosition => [ coluna, entity, role, relation, in_relation_to, was_derived_from ]
+    //    d) $codes     => listPosition => [ coluna, code, label, class ]
+    // ================================================================
+    $basic = $this->populateBasic();
+    $variables = $this->populateVariables($namespaces);
+    $objects = $this->populateObjects($namespaces);
+    $codes = $this->populateCodes($namespaces);
+
+    // ================================================================
+    // 3) Constrói o container de vertical tabs.
+    // ================================================================
+    $form['tabs'] = [
+      '#type' => 'vertical_tabs',
+      '#weight' => 0,
+    ];
+
+    // ================================================================
+    // 4) “Basic variables” tab:
+    // ================================================================
+    $form['basic_tab'] = [
+      '#type' => 'details',
+      '#title' => $this->t('Basic variables'),
+      '#group' => 'tabs',
+      '#open' => TRUE,
+    ];
+    // – Nome do SDD (readonly).
+    $form['basic_tab']['semantic_data_dictionary_name'] = [
+      '#type' => 'textfield',
+      '#title' => $this->t('Name'),
+      '#default_value' => $basic['name'] ?? '',
+      '#disabled' => TRUE,
+      '#wrapper_attributes' => [
+        'class' => ['mt-3'],
+      ],
+    ];
+    // – Versão do SDD (readonly).
+    $form['basic_tab']['semantic_data_dictionary_version'] = [
+      '#type' => 'textfield',
+      '#title' => $this->t('Version'),
+      '#default_value' => $basic['version'] ?? '',
+      '#disabled' => TRUE,
+    ];
+    // – Descrição do SDD (readonly textarea).
+    $form['basic_tab']['semantic_data_dictionary_description'] = [
+      '#type' => 'textarea',
+      '#title' => $this->t('Description'),
+      '#default_value' => $basic['description'] ?? '',
+      '#disabled' => TRUE,
+    ];
+
+    // ================================================================
+    // 5) “Data Dictionary” tab (Variables + Objects):
+    // ================================================================
+    $form['dictionary_tab'] = [
+      '#type' => 'details',
+      '#title' => $this->t('Data Dictionary'),
+      '#group' => 'tabs',
+    ];
+    // – Título “Variables” (apenas markup HTML).
+    $form['dictionary_tab']['variables_title'] = [
+      '#type' => 'markup',
+      '#markup' => '<br /><h4>' . $this->t('Variables') . '</h4>',
+    ];
+    // – Container para exibir a tabela de variáveis (readonly).
+    $form['dictionary_tab']['variables'] = [
+      '#type' => 'container',
+      '#attributes' => [
+        'class' => [
+          'p-3', 'bg-light', 'text-dark',
+          'row', 'border', 'border-secondary', 'rounded',
+        ],
+      ],
+      '#disabled' => TRUE,
+    ];
+    // – Cabeçalho fixo da tabela de variáveis (markup).
+    $form['dictionary_tab']['variables']['header'] = [
+      '#type' => 'markup',
+      '#markup' =>
+        '<div class="p-2 col bg-secondary text-white border border-white">Column</div>' .
+        '<div class="p-2 col bg-secondary text-white border border-white">Attribute</div>' .
+        '<div class="p-2 col bg-secondary text-white border border-white">Is Attribute Of</div>' .
+        '<div class="p-2 col bg-secondary text-white border border-white">Unit</div>' .
+        '<div class="p-2 col bg-secondary text-white border border-white">Time</div>' .
+        '<div class="p-2 col bg-secondary text-white border border-white">In Relation To</div>' .
+        '<div class="p-2 col bg-secondary text-white border border-white">Derived From</div>',
+    ];
+    // – Renderiza dinamicamente cada linha de variável.
+    $form['dictionary_tab']['variables']['rows'] = $this->renderVariableRows($variables);
+
+    // – Título “Objects”:
+    $form['dictionary_tab']['objects_title'] = [
+      '#type' => 'markup',
+      '#markup' => '<br /><h4>' . $this->t('Objects') . '</h4>',
+    ];
+    // – Container para a tabela de objetos (readonly).
+    $form['dictionary_tab']['objects'] = [
+      '#type' => 'container',
+      '#attributes' => [
+        'class' => [
+          'p-3', 'bg-light', 'text-dark',
+          'row', 'border', 'border-secondary', 'rounded',
+        ],
+      ],
+      '#disabled' => TRUE,
+    ];
+    // – Cabeçalho fixo da tabela de objetos.
+    $form['dictionary_tab']['objects']['header'] = [
+      '#type' => 'markup',
+      '#markup' =>
+        '<div class="p-2 col bg-secondary text-white border border-white">Column</div>' .
+        '<div class="p-2 col bg-secondary text-white border border-white">Entity</div>' .
+        '<div class="p-2 col bg-secondary text-white border border-white">Role</div>' .
+        '<div class="p-2 col bg-secondary text-white border border-white">Relation</div>' .
+        '<div class="p-2 col bg-secondary text-white border border-white">In Relation To</div>' .
+        '<div class="p-2 col bg-secondary text-white border border-white">Derived From</div>',
+    ];
+    // – Renderiza cada linha de objeto.
+    $form['dictionary_tab']['objects']['rows'] = $this->renderObjectRows($objects);
+
+    // ================================================================
+    // 6) “Codebook” tab (Possible Values / Codes):
+    // ================================================================
+    $form['codebook_tab'] = [
+      '#type' => 'details',
+      '#title' => $this->t('Codebook'),
+      '#group' => 'tabs',
+    ];
+    // – Título “Codes”.
+    $form['codebook_tab']['codes_title'] = [
+      '#type' => 'markup',
+      '#markup' => '<br ><h4>' . $this->t('Codes') . '</h4>',
+    ];
+    // – Container para mostrar tabela de códigos (readonly).
+    $form['codebook_tab']['codes'] = [
+      '#type' => 'container',
+      '#attributes' => [
+        'class' => [
+          'p-3', 'bg-light', 'text-dark',
+          'row', 'border', 'border-secondary', 'rounded',
+        ],
+      ],
+      '#disabled' => TRUE,
+    ];
+    // – Cabeçalho fixo da tabela de códigos.
+    $form['codebook_tab']['codes']['header'] = [
+      '#type' => 'markup',
+      '#markup' =>
+        '<div class="p-2 col bg-secondary text-white border border-white">Column</div>' .
+        '<div class="p-2 col bg-secondary text-white border border-white">Code</div>' .
+        '<div class="p-2 col bg-secondary text-white border border-white">Label</div>' .
+        '<div class="p-2 col bg-secondary text-white border border-white">Class</div>',
+    ];
+    // – Renderiza cada linha de código.
+    $form['codebook_tab']['codes']['rows'] = $this->renderCodeRows($codes);
+
+    // ================================================================
+    // 7) Botões de ação (Save, Back):
+    // ================================================================
+    $form['actions'] = [
+      '#type' => 'actions',
+      '#weight' => 100,
+    ];
+    // Se quiser ativar o botão “Save”, remova os comentários abaixo:
+    // $form['actions']['save'] = [
+    //   '#type' => 'submit',
+    //   '#value' => $this->t('Save'),
+    //   '#button_type' => 'primary',
+    // ];
+    // Para ativar “Back”, remova comentários e implemente backButtonSubmit():
+    // $form['actions']['back'] = [
+    //   '#type' => 'submit',
+    //   '#value' => $this->t('Back'),
+    //   '#button_type' => 'secondary',
+    //   '#submit' => ['::backButtonSubmit'],
+    // ];
+
+    return $form;
+  }
+
+  /**
+   * “Back” button submit handler: limpa caches e redireciona ao referrer.
+   */
+  public function backButtonSubmit(array &$form, FormStateInterface $form_state) {
     \Drupal::state()->delete('my_form_basic');
     \Drupal::state()->delete('my_form_variables');
     \Drupal::state()->delete('my_form_objects');
     \Drupal::state()->delete('my_form_codes');
 
-    $form['#cache']['max-age'] = 0;
-    $form['#prefix']      = '<div id="sdd-modal-form-wrapper">';
-    $form['#suffix']      = '</div>';
-
-    // INITIALIZE NS TABLE
-    $tables = new Tables;
-    $namespaces = $tables->getNamespaces();
-
-    // MODAL
-    $form['#attached']['library'][] = 'rep/rep_modal'; // Biblioteca personalizada do módulo
-    $form['#attached']['library'][] = 'core/drupal.dialog'; // Biblioteca do modal do Drupal
-
-    if ($state === 'basic') {
-      // READ SEMANTIC_DATA_DICTIONARY
-      $api = \Drupal::service('rep.api_connector');
-      $uri_decode=base64_decode($uri);
-      $semanticDataDictionary = $api->parseObjectResponse($api->getUri($uri_decode),'getUri');
-      if ($semanticDataDictionary == NULL) {
-        \Drupal::messenger()->addMessage(t("Failed to retrieve Semantic Data Dictionary."));
-        self::backUrl();
-        return;
-      } else {
-        $this->setSemanticDataDictionary($semanticDataDictionary);
-        //dpm($this->getSemanticDataDictionary());
-      }
-
-      // RESET STATE TO BASIC
-      $state = 'basic';
-
-      // POPULATE DATA STRUCTURES
-      $basic = $this->populateBasic();
-      $variables = $this->populateVariables($namespaces);
-      $objects = $this->populateObjects($namespaces);
-      $codes = $this->populateCodes($namespaces);
-
-    } else {
-
-      $basic = \Drupal::state()->get('my_form_basic');
-      $variables = \Drupal::state()->get('my_form_variables') ?? [];
-      $objects = \Drupal::state()->get('my_form_objects') ?? [];
-      $codes = \Drupal::state()->get('my_form_codes') ?? [];
-
-    }
-
-    // SAVE STATE
-    $this->setState($state);
-
-    // SET SEPARATOR
-    $separator = '<div class="w-100"></div>';
-
-    // $form['semantic_data_dictionary_title'] = [
-    //   '#type' => 'markup',
-    //   '#markup' => '<h3 class="mt-5">Edit Semantic Data Dictionary</h3><br>',
-    // ];
-
-    $form['current_state'] = [
-      '#type' => 'hidden',
-      '#value' => $state,
-    ];
-
-    // Container for pills and content.
-    // $form['pills_card'] = [
-    //   '#type' => 'container',
-    //   '#attributes' => [
-    //     'class' => ['nav', 'nav-pills', 'nav-justified', 'mb-3'],
-    //     'id' => 'pills-card-container',
-    //     'role' => 'tablist',
-    //   ],
-    // ];
-
-    // Define pills as links with AJAX callback.
-    $states = [
-      'basic' => 'Basic variables',
-      'dictionary' => 'Data Dictionary',
-      'codebook' => 'Codebook'
-    ];
-
-    // foreach ($states as $key => $label) {
-    //   $form['pills_card'][$key] = [
-    //     '#type' => 'button',
-    //     '#value' => $label,
-    //     '#name' => 'button_' . $key,
-    //     '#attributes' => [
-    //       'class' => ['nav-link', $state === $key ? 'active' : ''],
-    //       'data-state' => $key,
-    //       'role' => 'presentation',
-    //     ],
-    //     '#ajax' => [
-    //       'callback' => '::pills_card_callback',
-    //       'event'    => 'click',
-    //       'wrapper'  => 'sdd-modal-form-wrapper',
-    //       'progress' => ['type' => 'none'],
-    //     ],
-    //   ];
-    // }
-    // Pills:
-    $form['pills_card'] = [
-      '#type' => 'container',
-      '#attributes' => [
-        'class' => ['nav', 'nav-pills', 'nav-justified', 'mb-3'],
-        'role'  => 'tablist',
-      ],
-    ];
-    foreach ($states as $key => $label) {
-      $form['pills_card'][$key] = [
-        '#type' => 'button',
-        '#value' => $label,
-        '#name' => 'button_'.$key,
-        '#attributes' => ['class'=>['nav-link', $state===$key?'active':'']],
-        '#ajax' => [
-          'callback' => '::pillsCardCallback',
-          'wrapper'  => 'sdd-modal-form-wrapper',
-          'event'    => 'click',
-        ],
-      ];
-    }
-
-    // Add a hidden field to capture the current state.
-    $form['state'] = [
-      '#type' => 'hidden',
-      '#value' => $state,
-    ];
-
-    $form['uri'] = [
-      '#type'  => 'hidden',
-      '#value' => $uri,
-    ];
-
-    /* ========================== BASIC ========================= */
-
-    if ($this->getState() == 'basic') {
-
-      $name = '';
-      if (isset($basic['name'])) {
-        $name = $basic['name'];
-      }
-      $version = '';
-      if (isset($basic['version'])) {
-        $version = $basic['version'];
-      }
-      $description = '';
-      if (isset($basic['description'])) {
-        $description = $basic['description'];
-      }
-
-      $form['semantic_data_dictionary_name'] = [
-        '#type' => 'textfield',
-        '#title' => $this->t('Name'),
-        '#default_value' => $name,
-        '#disabled' => TRUE,
-        '#wrapper_attributes' => [
-          'class' => ['mt-4'],
-        ],
-      ];
-      $form['semantic_data_dictionary_version'] = [
-        '#type' => 'textfield',
-        '#title' => $this->t('Version'),
-        '#default_value' => $version,
-        '#disabled' => TRUE,
-      ];
-      $form['semantic_data_dictionary_description'] = [
-        '#type' => 'textarea',
-        '#title' => $this->t('Description'),
-        '#default_value' => $description,
-        '#disabled' => TRUE,
-      ];
-
-    }
-
-    /* ======================= DICTIONARY ======================= */
-
-    if ($this->getState() == 'dictionary') {
-
-      /*
-      *      VARIABLES
-      */
-
-      $form['variables_title'] = [
-        '#type' => 'markup',
-        '#markup' => 'Variables',
-      ];
-
-      $form['variables'] = array(
-        '#type' => 'container',
-        '#title' => $this->t('variables'),
-        '#attributes' => array(
-          'class' => array('p-3', 'bg-light', 'text-dark', 'row', 'border', 'border-secondary', 'rounded'),
-          'id' => 'custom-table-wrapper',
-        ),
-        '#disabled' => TRUE, // Disable the form to prevent editing
-      );
-
-      $form['variables']['header'] = array(
-        '#type' => 'markup',
-        '#markup' =>
-          '<div class="p-2 col bg-secondary text-white border border-white">Column</div>' .
-          '<div class="p-2 col bg-secondary text-white border border-white">Attribute</div>' .
-          '<div class="p-2 col bg-secondary text-white border border-white">Is Attribute Of</div>' .
-          '<div class="p-2 col bg-secondary text-white border border-white">Unit</div>' .
-          '<div class="p-2 col bg-secondary text-white border border-white">Time</div>' .
-          '<div class="p-2 col bg-secondary text-white border border-white">In Relation To</div>' .
-          '<div class="p-2 col bg-secondary text-white border border-white">Was Derived From</div>' .
-          '<div class="p-2 col-md-1 bg-secondary text-white border border-white">Operations</div>' . $separator,
-      );
-
-      $form['variables']['rows'] = $this->renderVariableRows($variables);
-
-      $form['variables']['space_3'] = [
-        '#type' => 'markup',
-        '#markup' => $separator,
-      ];
-
-      $form['variables']['actions']['top'] = array(
-        '#type' => 'markup',
-        '#markup' => '<div class="p-3 col">',
-      );
-
-      // $form['variables']['actions']['add_row'] = [
-      //   '#type' => 'submit',
-      //   '#value' => $this->t('New Variable'),
-      //   '#name' => 'new_variable',
-      //   '#attributes' => array('class' => array('btn', 'btn-sm', 'add-element-button')),
-      // ];
-
-      $form['variables']['actions']['bottom'] = array(
-        '#type' => 'markup',
-        '#markup' => '</div>' . $separator,
-      );
-
-      /*
-      *      OBJECTS
-      */
-
-      $form['objects_title'] = [
-        '#type' => 'markup',
-        '#markup' => 'Objects',
-      ];
-
-      $form['objects'] = array(
-        '#type' => 'container',
-        '#title' => $this->t('Objects'),
-        '#attributes' => array(
-          'class' => array('p-3', 'bg-light', 'text-dark', 'row', 'border', 'border-secondary', 'rounded'),
-          'id' => 'custom-table-wrapper',
-        ),
-        '#disabled' => TRUE, // Disable the form to prevent editing
-      );
-
-      $form['objects']['header'] = array(
-        '#type' => 'markup',
-        '#markup' =>
-          '<div class="p-2 col bg-secondary text-white border border-white">Column</div>' .
-          '<div class="p-2 col bg-secondary text-white border border-white">Entity</div>' .
-          '<div class="p-2 col bg-secondary text-white border border-white">Role</div>' .
-          '<div class="p-2 col bg-secondary text-white border border-white">Relation</div>' .
-          '<div class="p-2 col bg-secondary text-white border border-white">In Relation To</div>' .
-          '<div class="p-2 col bg-secondary text-white border border-white">Was Derived From</div>' .
-          '<div class="p-2 col-md-1 bg-secondary text-white border border-white">Operations</div>' . $separator,
-      );
-
-      $form['objects']['rows'] = $this->renderObjectRows($objects);
-
-      $form['objects']['space_3'] = [
-        '#type' => 'markup',
-        '#markup' => $separator,
-      ];
-
-      $form['objects']['actions']['top'] = array(
-        '#type' => 'markup',
-        '#markup' => '<div class="p-3 col">',
-      );
-
-      // $form['objects']['actions']['add_row'] = [
-      //   '#type' => 'submit',
-      //   '#value' => $this->t('New Object'),
-      //   '#name' => 'new_object',
-      //   '#attributes' => array('class' => array('btn', 'btn-sm', 'add-element-button')),
-      // ];
-
-      $form['objects']['actions']['bottom'] = array(
-        '#type' => 'markup',
-        '#markup' => '</div>' . $separator,
-      );
-
-    }
-
-    /* ======================= CODEBOOK ======================= */
-
-    if ($this->getState() == 'codebook') {
-
-      /*
-      *      CODES
-      */
-
-      $form['codes_title'] = [
-        '#type' => 'markup',
-        '#markup' => 'Codes',
-      ];
-
-      $form['codes'] = array(
-        '#type' => 'container',
-        '#title' => $this->t('codes'),
-        '#attributes' => array(
-          'class' => array('p-3', 'bg-light', 'text-dark', 'row', 'border', 'border-secondary', 'rounded'),
-          'id' => 'custom-table-wrapper',
-        ),
-        '#disabled' => TRUE, // Disable the form to prevent editing
-      );
-
-      $form['codes']['header'] = array(
-        '#type' => 'markup',
-        '#markup' =>
-          '<div class="p-2 col bg-secondary text-white border border-white">Column</div>' .
-          '<div class="p-2 col bg-secondary text-white border border-white">Code</div>' .
-          '<div class="p-2 col bg-secondary text-white border border-white">Label</div>' .
-          '<div class="p-2 col bg-secondary text-white border border-white">Class</div>' .
-          '<div class="p-2 col-md-1 bg-secondary text-white border border-white">Operations</div>' . $separator,
-      );
-
-      $form['codes']['rows'] = $this->renderCodeRows($codes);
-
-      $form['codes']['space_3'] = [
-        '#type' => 'markup',
-        '#markup' => $separator,
-      ];
-
-      $form['codes']['actions']['top'] = array(
-        '#type' => 'markup',
-        '#markup' => '<div class="p-3 col">',
-      );
-
-      // $form['codes']['actions']['add_row'] = [
-      //   '#type' => 'submit',
-      //   '#value' => $this->t('New Code'),
-      //   '#name' => 'new_code',
-      //   '#attributes' => array('class' => array('btn', 'btn-sm', 'add-element-button')),
-      // ];
-
-      $form['codes']['actions']['bottom'] = array(
-        '#type' => 'markup',
-        '#markup' => '</div>' . $separator,
-      );
-
-    }
-
-    /* ======================= COMMON BOTTOM ======================= */
-
-    // $form['space'] = [
-    //   '#type' => 'markup',
-    //   '#markup' => '<br><br>',
-    // ];
-
-    // $form['save_submit'] = [
-    //   '#type' => 'submit',
-    //   '#value' => $this->t('Save'),
-    //   '#name' => 'save',
-    //   '#attributes' => [
-    //     'class' => ['btn', 'btn-primary', 'save-button'],
-    //   ],
-    // ];
-    // $form['cancel_submit'] = [
-    //   '#type' => 'submit',
-    //   '#value' => $this->t('Back'),
-    //   '#name' => 'back',
-    //   '#attributes' => [
-    //     'class' => ['btn', 'btn-primary', 'back-button'],
-    //   ],
-    // ];
-    // $form['bottom_space'] = [
-    //   '#type' => 'item',
-    //   '#title' => t('<br><br>'),
-    // ];
-
-    //$form['#attached']['library'][] = 'sem/sem_list';
-
-    return $form;
+    // Redireciona para a página anterior ou raiz (caso não exista referer).
+    $referer = \Drupal::request()->headers->get('referer') ?: '/';
+    $response = new \Symfony\Component\HttpFoundation\RedirectResponse($referer);
+    $form_state->setResponse($response);
   }
-
-  public function validateForm(array &$form, FormStateInterface $form_state) {
-    $submitted_values = $form_state->cleanValues()->getValues();
-    $triggering_element = $form_state->getTriggeringElement();
-    $button_name = $triggering_element['#name'];
-
-    if ($button_name === 'save') {
-      // TODO
-      /*
-      $basic = \Drupal::state()->get('my_form_basic');
-      if(strlen($basic['name']) < 1) {
-        $form_state->setErrorByName(
-          'semantic_data_dictionary_name',
-          $this->t('Please enter a valid name for the Semantic Data Dictionary')
-        );
-      }
-      */
-    }
-  }
-
-  // public function pills_card_callback(array &$form, FormStateInterface $form_state) {
-
-  //   // RETRIEVE CURRENT STATE AND SAVE IT ACCORDINGLY
-  //   $currentState = $form_state->getValue('state');
-  //   if ($currentState == 'basic') {
-  //     $this->updateBasic($form_state);
-  //   }
-  //   if ($currentState == 'dictionary') {
-  //     $this->updateVariables($form_state);
-  //     $this->updateObjects($form_state);
-  //   }
-  //   if ($currentState == 'codebook') {
-  //     $this->updateCodes($form_state);
-  //   }
-
-  //   // Need to retrieve $basic because it contains the semantic data dictionary's URI
-  //   $basic = \Drupal::state()->get('my_form_basic');
-
-  //   // RETRIEVE FUTURE STATE
-  //   $triggering_element = $form_state->getTriggeringElement();
-  //   $parts = explode('_', $triggering_element['#name']);
-  //   $state = (isset($parts) && is_array($parts)) ? end($parts) : null;
-
-  //   // BUILD NEW URL
-  //   $root_url = \Drupal::request()->getBaseUrl();
-  //   $newUrl = $root_url . REPGUI::VIEW_SEMANTIC_DATA_DICTIONARY . $state . '/' . base64_encode($basic['uri']);
-
-  //   // REDIRECT TO NEW URL
-  //   $response = new AjaxResponse();
-  //   $response->addCommand(new RedirectCommand($newUrl));
-
-  //   return $response;
-  // }
-  public function pillsCardCallback(array &$form, FormStateInterface $form_state) {
-    // 1) Guardar edições do tab atual.
-    $current = $form_state->getValue('state');
-    if ($current === 'basic') {
-      $this->updateBasic($form_state);
-    }
-    elseif ($current === 'dictionary') {
-      $this->updateVariables($form_state);
-      $this->updateObjects($form_state);
-    }
-    else {
-      $this->updateCodes($form_state);
-    }
-
-    // 2) Descobrir qual pill foi clicada.
-    $trigger = $form_state->getTriggeringElement();
-    $parts = explode('_', $trigger['#name']);
-    $new_state = end($parts);
-
-    $uri = $form_state->getValue('uri');
-
-    try {
-      $rebuilt = \Drupal::formBuilder()->getForm(
-        static::class,
-        $form_state,
-        $new_state,
-        $uri
-      );
-    }
-    catch (\Exception $e) {
-      \Drupal::logger('sem')->error('Erro ao reconstruir form: @msg em @file linha @line',
-        [
-          '@msg' => $e->getMessage(),
-          '@file' => $e->getFile(),
-          '@line' => $e->getLine(),
-        ]
-      );
-      // rethrow para não mascarar o 500:
-      throw $e;
-    }
-
-    $response = new AjaxResponse();
-    $response->addCommand(new HtmlCommand('#sdd-modal-form-wrapper', $rebuilt));
-    return $response;
-  }
-
-  /******************************
-   *
-   *    BASIC'S FUNCTIONS
-   *
-   ******************************/
 
   /**
    * {@inheritdoc}
+   *
+   * Nenhuma validação extra: todos os campos estão em “#disabled => TRUE”.
    */
-  public function updateBasic(FormStateInterface $form_state) {
-    $basic = \Drupal::state()->get('my_form_basic');
-    $input = $form_state->getUserInput();
-
-    if (isset($input) && is_array($input) &&
-        isset($basic) && is_array($basic)) {
-      $basic['name']        = $input['semantic_data_dictionary_name'] ?? '';
-      $basic['version']     = $input['semantic_data_dictionary_version'] ?? '';
-      $basic['description'] = $input['semantic_data_dictionary_description'] ?? '';
-      \Drupal::state()->set('my_form_basic', $basic);
-    }
-    $response = new AjaxResponse();
-    return $response;
+  public function validateForm(array &$form, FormStateInterface $form_state) {
+    // Nada a validar.
   }
 
-  public function populateBasic() {
+  /**
+   * {@inheritdoc}
+   *
+   * No submit, recriamos via REP API:
+   *   1. Carrega valores em memória (basic, variables, objects, codes).
+   *   2. Deleta o SDD antigo.
+   *   3. Recria o SDD (basic JSON).
+   *   4. Chama saveVariables(), saveObjects(), saveCodes().
+   *   5. Limpa caches e redireciona de volta.
+   */
+  public function submitForm(array &$form, FormStateInterface $form_state) {
+    // Carrega cada array em cache (armazenado em populate...).
+    $basic = \Drupal::state()->get('my_form_basic', []);
+    $variables = \Drupal::state()->get('my_form_variables', []);
+    $objects = \Drupal::state()->get('my_form_objects', []);
+    $codes = \Drupal::state()->get('my_form_codes', []);
+
+    // Se faltar o URI básico, exibimos erro e abortamos.
+    if (empty($basic['uri'])) {
+      \Drupal::messenger()->addError($this->t('Cannot save: missing SDD URI.'));
+      return;
+    }
+
+    try {
+      $useremail = \Drupal::currentUser()->getEmail();
+      // JSON básico para o SDD:
+      $sdd_json = json_encode([
+        'uri' => $basic['uri'],
+        'typeUri' => HASCO::SEMANTIC_DATA_DICTIONARY,
+        'hascoTypeUri' => HASCO::SEMANTIC_DATA_DICTIONARY,
+        'label' => $basic['name'],
+        'hasVersion' => $basic['version'],
+        'comment' => $basic['description'],
+        'hasSIRManagerEmail' => $useremail,
+      ]);
+
+      $api = \Drupal::service('rep.api_connector');
+      // Deleta o SDD antigo (isso já deleta variáveis/objetos/códigos).
+      $api->elementDel('semanticdatadictionary', $basic['uri']);
+      // Recria o SDD principal.
+      $api->elementAdd('semanticdatadictionary', $sdd_json);
+
+      // Se existirem variáveis, recriamos uma a uma:
+      if (!empty($variables) && is_array($variables)) {
+        $this->saveVariables($basic['uri'], $variables);
+      }
+      // Se existirem objetos, recriamos cada um:
+      if (!empty($objects) && is_array($objects)) {
+        $this->saveObjects($basic['uri'], $objects);
+      }
+      // Se existirem códigos, recriamos cada um:
+      if (!empty($codes) && is_array($codes)) {
+        $this->saveCodes($basic['uri'], $codes);
+      }
+
+      // Por fim, limpa caches:
+      \Drupal::state()->delete('my_form_basic');
+      \Drupal::state()->delete('my_form_variables');
+      \Drupal::state()->delete('my_form_objects');
+      \Drupal::state()->delete('my_form_codes');
+
+      \Drupal::messenger()->addStatus($this->t('Semantic Data Dictionary has been updated successfully.'));
+      // Redireciona de volta ao referer (ou root “/”).
+      $referer = \Drupal::request()->headers->get('referer') ?: '/';
+      $response = new \Symfony\Component\HttpFoundation\RedirectResponse($referer);
+      $form_state->setResponse($response);
+    }
+    catch (\Exception $e) {
+      \Drupal::messenger()->addError($this->t('An error occurred while saving: @msg', ['@msg' => $e->getMessage()]));
+      // Mesmo em caso de erro, redireciona de volta:
+      $referer = \Drupal::request()->headers->get('referer') ?: '/';
+      $response = new \Symfony\Component\HttpFoundation\RedirectResponse($referer);
+      $form_state->setResponse($response);
+    }
+  }
+
+  // ============================================================================
+  // “Basic variables” helpers
+  // ============================================================================
+
+  /**
+   * Monta o array “basic” ([ uri, name, version, description ]).
+   *
+   * @return array
+   *   [
+   *     'uri' => string,
+   *     'name' => string,
+   *     'version' => string,
+   *     'description' => string,
+   *   ]
+   */
+  protected function populateBasic() {
+    $sdd = $this->getSemanticDataDictionary();
     $basic = [
-      'uri' => $this->getSemanticDataDictionary()->uri,
-      'name' => $this->getSemanticDataDictionary()->label,
-      'version' => $this->getSemanticDataDictionary()->hasVersion,
-      'description' => $this->getSemanticDataDictionary()->comment,
+      'uri' => $sdd->uri,
+      'name' => $sdd->label,
+      'version' => $sdd->hasVersion,
+      'description' => $sdd->comment,
     ];
     \Drupal::state()->set('my_form_basic', $basic);
     return $basic;
   }
 
-  /******************************
+  // ============================================================================
+  // “Data Dictionary” helpers (Variables)
+  // ============================================================================
+
+  /**
+   * Monta o array “variables” a partir do objeto SDD.
    *
-   *    variables' FUNCTIONS
-   *
-   ******************************/
-
-  protected function renderVariableRows(array $variables) {
-    $form_rows = [];
-    $separator = '<div class="w-100"></div>';
-    foreach ($variables as $delta => $variable) {
-
-      $form_row = array(
-        'column' => array(
-          'top' => array(
-            '#type' => 'markup',
-            '#markup' => '<div class="pt-3 col border border-white">',
-          ),
-          'main' => array(
-            '#type' => 'textfield',
-            '#name' => 'variable_column_' . $delta,
-            '#value' => $variable['column'],
-          ),
-          'bottom' => array(
-            '#type' => 'markup',
-            '#markup' => '</div>',
-          ),
-        ),
-        'attribute' => [
-          'top' => [
-            '#type' => 'markup',
-            '#markup' => '<div class="pt-3 col border border-white">',
-          ],
-          'main' => [
-            '#type' => 'textfield',
-            '#name' => 'variable_attribute_' . $delta,
-            '#value' => $variable['attribute'],
-            '#attributes' => [
-              'class' => ['open-tree-modal'],
-              'data-dialog-type' => 'modal',
-              'data-dialog-options' => json_encode(['width' => 800]),
-              'data-url' => Url::fromRoute('rep.tree_form', [
-                'mode' => 'modal',
-                'elementtype' => 'attribute',
-              ], ['query' => ['field_id' => 'variable_attribute_' . $delta]])->toString(),
-              'data-field-id' => 'variable_attribute_' . $delta,
-              'data-search-value' => $variable['attribute'],
-              'data-elementtype' => 'attribute',
-            ],
-          ],
-          'bottom' => [
-            '#type' => 'markup',
-            '#markup' => '</div>',
-          ],
-        ],
-        'is_attribute_of' => array(
-          'top' => array(
-            '#type' => 'markup',
-            '#markup' => '<div class="pt-3 col border border-white">',
-          ),
-          'main' => array(
-            '#type' => 'textfield',
-            '#name' => 'variable_is_attribute_of_' . $delta,
-            '#value' => $variable['is_attribute_of'],
-          ),
-          'bottom' => array(
-            '#type' => 'markup',
-            '#markup' => '</div>',
-          ),
-        ),
-        'unit' => [
-          'top' => [
-            '#type' => 'markup',
-            '#markup' => '<div class="pt-3 col border border-white">',
-          ],
-          'main' => [
-            '#type' => 'textfield',
-            '#name' => 'variable_unit_' . $delta,
-            '#value' => $variable['unit'],
-            '#attributes' => [
-              'class' => ['open-tree-modal'],
-              'data-dialog-type' => 'modal',
-              'data-dialog-options' => json_encode(['width' => 800]),
-              'data-url' => Url::fromRoute('rep.tree_form', [
-                'mode' => 'modal',
-                'elementtype' => 'unit',
-              ], ['query' => ['field_id' => 'variable_unit_' . $delta]])->toString(),
-              'data-field-id' => 'variable_unit_' . $delta,
-              'data-search-value' => $variable['unit'],
-              'data-elementtype' => 'unit',
-            ],
-          ],
-          'bottom' => [
-            '#type' => 'markup',
-            '#markup' => '</div>',
-          ],
-        ],
-        'time' => array(
-          'top' => array(
-            '#type' => 'markup',
-            '#markup' => '<div class="pt-3 col border border-white">',
-          ),
-          'main' => array(
-            '#type' => 'textfield',
-            '#name' => 'variable_time_' . $delta,
-            '#value' => $variable['time'],
-          ),
-          'bottom' => array(
-            '#type' => 'markup',
-            '#markup' => '</div>',
-          ),
-        ),
-        'in_relation_to' => array(
-          'top' => array(
-            '#type' => 'markup',
-            '#markup' => '<div class="pt-3 col border border-white">',
-          ),
-          'main' => array(
-            '#type' => 'textfield',
-            '#name' => 'variable_in_relation_to_' . $delta,
-            '#value' => $variable['in_relation_to'],
-          ),
-          'bottom' => array(
-            '#type' => 'markup',
-            '#markup' => '</div>',
-          ),
-        ),
-        'was_derived_from' => array(
-          'top' => array(
-            '#type' => 'markup',
-            '#markup' => '<div class="pt-3 col border border-white">',
-          ),
-          'main' => array(
-            '#type' => 'textfield',
-            '#name' => 'variable_was_derived_from_' . $delta,
-            '#value' => $variable['was_derived_from'],
-          ),
-          'bottom' => array(
-            '#type' => 'markup',
-            '#markup' => '</div>',
-          ),
-        ),
-        'operations' => array(
-          'top' => array(
-            '#type' => 'markup',
-            '#markup' => '<div class="pt-3 col-md-1 border border-white">',
-          ),
-          'main' => array(
-            '#type' => 'submit',
-            '#name' => 'variable_remove_' . $delta,
-            '#value' => $this->t('Remove'),
-            '#attributes' => array(
-              'class' => array('remove-row', 'btn', 'btn-sm', 'delete-element-button'),
-              'id' => 'variable-' . $delta,
-            ),
-          ),
-          'bottom' => array(
-            '#type' => 'markup',
-            '#markup' => '</div>' . $separator,
-          ),
-        ),
-      );
-
-      $rowId = 'row' . $delta;
-      $form_rows[] = [
-        $rowId => $form_row,
-      ];
-
-    }
-    return $form_rows;
-  }
-
-  protected function updateVariables(FormStateInterface $form_state) {
-    $variables = \Drupal::state()->get('my_form_variables');
-    $input = $form_state->getUserInput();
-    if (isset($input) && is_array($input) &&
-        isset($variables) && is_array($variables)) {
-
-      foreach ($variables as $variable_id => $variable) {
-        if (isset($variable_id) && isset($variable)) {
-          $variables[$variable_id]['column']            = $input['variable_column_' . $variable_id] ?? '';
-          $variables[$variable_id]['attribute']         = $input['variable_attribute_' . $variable_id] ?? '';
-          $variables[$variable_id]['is_attribute_of']   = $input['variable_is_attribute_of_' . $variable_id] ?? '';
-          $variables[$variable_id]['unit']              = $input['variable_unit_' . $variable_id] ?? '';
-          $variables[$variable_id]['time']              = $input['variable_time_' . $variable_id] ?? '';
-          $variables[$variable_id]['in_relation_to']    = $input['variable_in_relation_to_' . $variable_id] ?? '';
-          $variables[$variable_id]['was_derived_from']  = $input['variable_was_derived_from_' . $variable_id] ?? '';
-        }
-      }
-      \Drupal::state()->set('my_form_variables', $variables);
-    }
-    return;
-  }
-
-  protected function populateVariables($namespaces) {
+   * @param array $namespaces
+   *   Mapa de prefixo → URI para namespacing (útil para tree-modal).
+   * @return array
+   *   [
+   *     listPosition => [
+   *       'column' => string,
+   *       'attribute' => string,
+   *       'is_attribute_of' => string,
+   *       'unit' => string,
+   *       'time' => string,
+   *       'in_relation_to' => string,
+   *       'was_derived_from' => string,
+   *     ],
+   *     …
+   *   ]
+   */
+  protected function populateVariables(array $namespaces) {
     $variables = [];
     $attributes = $this->getSemanticDataDictionary()->attributes;
-    if (count($attributes) > 0) {
-      foreach ($attributes as $attribute_id => $attribute) {
-        if (isset($attribute_id) && isset($attribute)) {
-          $listPosition = $attribute->listPosition;
-          $variables[$listPosition]['column']            = $attribute->label;
-          $variables[$listPosition]['attribute']         = Utils::namespaceUriWithNS($attribute->attribute,$namespaces);
-          $variables[$listPosition]['is_attribute_of']   = $attribute->objectUri;
-          $variables[$listPosition]['unit']              = Utils::namespaceUriWithNS($attribute->unit,$namespaces);
-          $variables[$listPosition]['time']              = Utils::namespaceUriWithNS($attribute->eventUri,$namespaces);
-          $variables[$listPosition]['in_relation_to']    = $attribute->inRelationTo;
-          $variables[$listPosition]['was_derived_from']  = $attribute->wasDerivedFrom;
-        }
+    if (is_array($attributes) && count($attributes) > 0) {
+      foreach ($attributes as $aid => $attribute) {
+        $pos = $attribute->listPosition;
+        $variables[$pos] = [
+          'column' => $attribute->label,
+          'attribute' => Utils::namespaceUriWithNS($attribute->attribute, $namespaces),
+          'is_attribute_of' => $attribute->objectUri,
+          'unit' => Utils::namespaceUriWithNS($attribute->unit, $namespaces),
+          'time' => Utils::namespaceUriWithNS($attribute->eventUri, $namespaces),
+          'in_relation_to' => $attribute->inRelationTo,
+          'was_derived_from' => $attribute->wasDerivedFrom,
+        ];
       }
+      // Ordena pelo listPosition (chave do array).
       ksort($variables);
     }
     \Drupal::state()->set('my_form_variables', $variables);
-
     return $variables;
   }
 
-  protected function saveVariables($semanticDataDictionaryUri, array $variables) {
-    if (!isset($semanticDataDictionaryUri)) {
-      \Drupal::messenger()->addError(t("No semantic data dictionary's URI have been provided to save variables."));
-      return;
-    }
-    if (!isset($variables) || !is_array($variables)) {
-      \Drupal::messenger()->addWarning(t("Semantic data dictionary has no variable to be saved."));
-      return;
-    }
-
-    foreach ($variables as $variable_id => $variable) {
-      if (isset($variable_id) && isset($variable)) {
-        try {
-          $useremail = \Drupal::currentUser()->getEmail();
-
-          $column = ' ';
-          if ($variables[$variable_id]['column'] != NULL && $variables[$variable_id]['column'] != '') {
-            $column = $variables[$variable_id]['column'];
-          }
-
-          $attributeUri = ' ';
-          if ($variables[$variable_id]['attribute'] != NULL && $variables[$variable_id]['attribute'] != '') {
-            $attributeUri = $variables[$variable_id]['attribute'];
-          }
-
-          $isAttributeOf = ' ';
-          if ($variables[$variable_id]['is_attribute_of'] != NULL && $variables[$variable_id]['is_attribute_of'] != '') {
-            $isAttributeOf = $variables[$variable_id]['is_attribute_of'];
-          }
-
-          $unitUri = ' ';
-          if ($variables[$variable_id]['unit'] != NULL && $variables[$variable_id]['unit'] != '') {
-            $unitUri = $variables[$variable_id]['unit'];
-          }
-
-          $timeUri = ' ';
-          if ($variables[$variable_id]['time'] != NULL && $variables[$variable_id]['time'] != '') {
-            $timeUri = $variables[$variable_id]['time'];
-          }
-
-          $inRelationToUri = ' ';
-          if ($variables[$variable_id]['in_relation_to'] != NULL && $variables[$variable_id]['in_relation_to'] != '') {
-            $inRelationToUri = $variables[$variable_id]['in_relation_to'];
-          }
-
-          $wasDerivedFromUri = ' ';
-          if ($variables[$variable_id]['was_derived_from'] != NULL && $variables[$variable_id]['was_derived_from'] != '') {
-            $wasDerivedFromUri = $variables[$variable_id]['was_derived_from'];
-          }
-
-          $variableUri = str_replace(
-            Constant::PREFIX_SEMANTIC_DATA_DICTIONARY,
-            Constant::PREFIX_SDD_ATTRIBUTE,
-            $semanticDataDictionaryUri) . '/' . $variable_id;
-          $variableJSON = '{"uri":"'. $variableUri .'",'.
-              '"typeUri":"'.HASCO::SDD_ATTRIBUTE.'",'.
-              '"hascoTypeUri":"'.HASCO::SDD_ATTRIBUTE.'",'.
-              '"partOfSchema":"'.$semanticDataDictionaryUri.'",'.
-              '"listPosition":"'.$variable_id.'",'.
-              '"label":"'.$column.'",'.
-              '"attribute":"' . $attributeUri . '",' .
-              '"objectUri":"' . $isAttributeOf . '",' .
-              '"unit":"' . $unitUri . '",' .
-              '"eventUri":"' . $timeUri . '",' .
-              '"inRelationTo":"' . $inRelationToUri . '",' .
-              '"wasDerivedFrom":"' . $wasDerivedFromUri . '",' .
-              '"comment":"Column ' . $column . ' of ' . $semanticDataDictionaryUri . '",'.
-              '"hasSIRManagerEmail":"'.$useremail.'"}';
-          $api = \Drupal::service('rep.api_connector');
-          $api->elementAdd('sddattribute',$variableJSON);
-
-          //dpm($variableJSON);
-
-        } catch(\Exception $e){
-          \Drupal::messenger()->addError(t("An error occurred while saving the semantic data dictionary: ".$e->getMessage()));
-        }
-      }
-    }
-    return;
-  }
-
-  public function addVariableRow() {
-    $variables = \Drupal::state()->get('my_form_variables') ?? [];
-
-    // Add a new row to the table.
-    $variables[] = [
-      'column' => '',
-      'attribute' => '',
-      'is_attribute_of' => '',
-      'unit' => '',
-      'time' => '',
-      'in_relation_to' => '',
-      'was_derived_from' => '',
-    ];
-    \Drupal::state()->set('my_form_variables', $variables);
-
-    // Rebuild the table rows.
-    $form['variables']['rows'] = $this->renderVariableRows($variables);
-    return;
-  }
-
-  public function removeVariableRow($button_name) {
-    $variables = \Drupal::state()->get('my_form_variables') ?? [];
-
-    // from button name's value, determine which row to remove.
-    $parts = explode('_', $button_name);
-    $variable_to_remove = (isset($parts) && is_array($parts)) ? (int) (end($parts)) : null;
-
-    if (isset($variable_to_remove) && $variable_to_remove > -1) {
-      unset($variables[$variable_to_remove]);
-      $variables = array_values($variables);
-      \Drupal::state()->set('my_form_variables', $variables);
-    }
-    return;
-  }
-
-  /******************************
+  /**
+   * Renderiza cada linha da tabela “Variables” como um container read-only.
    *
-   *    OBJECTS' FUNCTIONS
+   * @param array $variables
+   *   [
+   *     listPosition => [
+   *       'column' => string,
+   *       'attribute' => string,
+   *       'is_attribute_of' => string,
+   *       'unit' => string,
+   *       'time' => string,
+   *       'in_relation_to' => string,
+   *       'was_derived_from' => string,
+   *     ],
+   *     …
+   *   ]
    *
-   ******************************/
+   * @return array
+   *   Render array com várias linhas (containers).
+   */
+  protected function renderVariableRows(array $variables) {
+    $rows = [];
 
-  protected function renderObjectRows(array $objects) {
-    $form_rows = [];
-    $separator = '<div class="w-100"></div>';
-    foreach ($objects as $delta => $object) {
-
-      $form_row = array(
-        'column' => array(
-          'top' => array(
-            '#type' => 'markup',
-            '#markup' => '<div class="pt-3 col border border-white">',
-          ),
-          'main' => array(
-            '#type' => 'textfield',
-            '#name' => 'object_column_' . $delta,
-            '#value' => $object['column'],
-          ),
-          'bottom' => array(
-            '#type' => 'markup',
-            '#markup' => '</div>',
-          ),
-        ),
-        'entity' => [
-          'top' => [
-            '#type' => 'markup',
-            '#markup' => '<div class="pt-3 col border border-white">',
-          ],
-          'main' => [
-            '#type' => 'textfield',
-            '#name' => 'object_entity_' . $delta,
-            '#value' => $object['entity'],
-            '#attributes' => [
-              'class' => ['open-tree-modal'],
-              'data-dialog-type' => 'modal',
-              'data-dialog-options' => json_encode(['width' => 800]),
-              'data-url' => Url::fromRoute('rep.tree_form', [
-                'mode' => 'modal',
-                'elementtype' => 'entity',
-              ], ['query' => ['field_id' => 'object_entity_' . $delta]])->toString(),
-              'data-field-id' => 'object_entity_' . $delta,
-              'data-search-value' => $object['entity'],
-              'data-elementtype' => 'entity',
-            ],
-          ],
-          'bottom' => [
-            '#type' => 'markup',
-            '#markup' => '</div>',
-          ],
+    foreach ($variables as $delta => $variable) {
+      $rows[] = [
+        '#type' => 'container',
+        '#attributes' => ['class' => ['row', 'mb-2']],
+        'column' => [
+          '#type' => 'textfield',
+          '#value' => $variable['column'],
+          '#disabled' => TRUE,
+          '#attributes' => ['class' => ['form-control-plaintext']],
+          '#prefix' => '<div class="col">',
+          '#suffix' => '</div>',
         ],
-        'role' => array(
-          'top' => array(
-            '#type' => 'markup',
-            '#markup' => '<div class="pt-3 col border border-white">',
-          ),
-          'main' => array(
-            '#type' => 'textfield',
-            '#name' => 'object_role_' . $delta,
-            '#value' => $object['role'],
-          ),
-          'bottom' => array(
-            '#type' => 'markup',
-            '#markup' => '</div>',
-          ),
-        ),
-        'relation' => array(
-          'top' => array(
-            '#type' => 'markup',
-            '#markup' => '<div class="pt-3 col border border-white">',
-          ),
-          'main' => array(
-            '#type' => 'textfield',
-            '#name' => 'object_relation_' . $delta,
-            '#value' => $object['relation'],
-          ),
-          'bottom' => array(
-            '#type' => 'markup',
-            '#markup' => '</div>',
-          ),
-        ),
-        'in_relation_to' => array(
-          'top' => array(
-            '#type' => 'markup',
-            '#markup' => '<div class="pt-3 col border border-white">',
-          ),
-          'main' => array(
-            '#type' => 'textfield',
-            '#name' => 'object_in_relation_to_' . $delta,
-            '#value' => $object['in_relation_to'],
-          ),
-          'bottom' => array(
-            '#type' => 'markup',
-            '#markup' => '</div>',
-          ),
-        ),
-        'was_derived_from' => array(
-          'top' => array(
-            '#type' => 'markup',
-            '#markup' => '<div class="pt-3 col border border-white">',
-          ),
-          'main' => array(
-            '#type' => 'textfield',
-            '#name' => 'object_was_derived_from_' . $delta,
-            '#value' => $object['was_derived_from'],
-          ),
-          'bottom' => array(
-            '#type' => 'markup',
-            '#markup' => '</div>',
-          ),
-        ),
-        'operations' => array(
-          'top' => array(
-            '#type' => 'markup',
-            '#markup' => '<div class="pt-3 col-md-1 border border-white">',
-          ),
-          'main' => array(
-            '#type' => 'submit',
-            '#name' => 'object_remove_' . $delta,
-            '#value' => $this->t('Remove'),
-            '#attributes' => array(
-              'class' => array('remove-row', 'btn', 'btn-sm', 'delete-element-button'),
-              'id' => 'object-' . $delta,
-            ),
-          ),
-          'bottom' => array(
-            '#type' => 'markup',
-            '#markup' => '</div>' . $separator,
-          ),
-        ),
-      );
+        'attribute' => [
+          '#type' => 'textfield',
+          '#value' => $variable['attribute'],
+          '#disabled' => TRUE,
+          '#attributes' => ['class' => ['form-control-plaintext']],
+          '#prefix' => '<div class="col">',
+          '#suffix' => '</div>',
+        ],
+        'is_attribute_of' => [
+          '#type' => 'textfield',
+          '#value' => $variable['is_attribute_of'],
+          '#disabled' => TRUE,
+          '#attributes' => ['class' => ['form-control-plaintext']],
+          '#prefix' => '<div class="col">',
+          '#suffix' => '</div>',
+        ],
+        'unit' => [
+          '#type' => 'textfield',
+          '#value' => $variable['unit'],
+          '#disabled' => TRUE,
+          '#attributes' => ['class' => ['form-control-plaintext']],
+          '#prefix' => '<div class="col">',
+          '#suffix' => '</div>',
+        ],
+        'time' => [
+          '#type' => 'textfield',
+          '#value' => $variable['time'],
+          '#disabled' => TRUE,
+          '#attributes' => ['class' => ['form-control-plaintext']],
+          '#prefix' => '<div class="col">',
+          '#suffix' => '</div>',
+        ],
+        'in_relation_to' => [
+          '#type' => 'textfield',
+          '#value' => $variable['in_relation_to'],
+          '#disabled' => TRUE,
+          '#attributes' => ['class' => ['form-control-plaintext']],
+          '#prefix' => '<div class="col">',
+          '#suffix' => '</div>',
+        ],
+        'was_derived_from' => [
+          '#type' => 'textfield',
+          '#value' => $variable['was_derived_from'],
+          '#disabled' => TRUE,
+          '#attributes' => ['class' => ['form-control-plaintext']],
+          '#prefix' => '<div class="col">',
+          '#suffix' => '</div>',
+        ],
+      ];
+    }
 
-      $rowId = 'row' . $delta;
-      $form_rows[] = [
-        $rowId => $form_row,
+    return $rows;
+  }
+
+  /**
+   * No momento do Save, percorre todas as variáveis em cache e envia à API.
+   *
+   * @param string $sdd_uri
+   *   URI completa do SDD.
+   * @param array $variables
+   *   [
+   *     listPosition => [
+   *       'column' => string,
+   *       'attribute' => string,
+   *       'is_attribute_of' => string,
+   *       'unit' => string,
+   *       'time' => string,
+   *       'in_relation_to' => string,
+   *       'was_derived_from' => string,
+   *     ],
+   *     …
+   *   ]
+   */
+  protected function saveVariables($sdd_uri, array $variables) {
+    if (empty($sdd_uri)) {
+      \Drupal::messenger()->addError($this->t('Cannot save variables: missing SDD URI.'));
+      return;
+    }
+    if (empty($variables) || !is_array($variables)) {
+      return;
+    }
+
+    $api = \Drupal::service('rep.api_connector');
+    $useremail = \Drupal::currentUser()->getEmail();
+
+    foreach ($variables as $vid => $variable) {
+      // Monta a URI única de cada variável (prefixo + posição).
+      $variable_uri = str_replace(
+        Constant::PREFIX_SEMANTIC_DATA_DICTIONARY,
+        Constant::PREFIX_SDD_ATTRIBUTE,
+        $sdd_uri
+      ) . '/' . $vid;
+
+      // Prepara o payload em JSON.
+      $payload = [
+        'uri' => $variable_uri,
+        'typeUri' => HASCO::SDD_ATTRIBUTE,
+        'hascoTypeUri' => HASCO::SDD_ATTRIBUTE,
+        'partOfSchema' => $sdd_uri,
+        'listPosition' => (string) $vid,
+        'label' => $variable['column'] ?: ' ',
+        'attribute' => $variable['attribute'] ?: ' ',
+        'objectUri' => $variable['is_attribute_of'] ?: ' ',
+        'unit' => $variable['unit'] ?: ' ',
+        'eventUri' => $variable['time'] ?: ' ',
+        'inRelationTo' => $variable['in_relation_to'] ?: ' ',
+        'wasDerivedFrom' => $variable['was_derived_from'] ?: ' ',
+        'comment' => 'Column ' . $variable['column'] . ' of ' . $sdd_uri,
+        'hasSIRManagerEmail' => $useremail,
       ];
 
-    }
-    return $form_rows;
-  }
-
-  protected function updateObjects(FormStateInterface $form_state) {
-    $objects = \Drupal::state()->get('my_form_objects');
-    $input = $form_state->getUserInput();
-    if (isset($input) && is_array($input) &&
-        isset($objects) && is_array($objects)) {
-
-      foreach ($objects as $object_id => $object) {
-        if (isset($object_id) && isset($object)) {
-          $objects[$object_id]['column']            = $input['object_column_' . $object_id] ?? '';
-          $objects[$object_id]['entity']            = $input['object_entity_' . $object_id] ?? '';
-          $objects[$object_id]['role']              = $input['object_role_' . $object_id] ?? '';
-          $objects[$object_id]['relation']          = $input['object_relation_' . $object_id] ?? '';
-          $objects[$object_id]['in_relation_to']    = $input['object_in_relation_to_' . $object_id] ?? '';
-          $objects[$object_id]['was_derived_from']  = $input['object_was_derived_from_' . $object_id] ?? '';
-        }
+      try {
+        $api->elementAdd('sddattribute', json_encode($payload));
       }
-      \Drupal::state()->set('my_form_objects', $objects);
+      catch (\Exception $e) {
+        \Drupal::messenger()->addError($this->t('Error saving variable @col: @msg', [
+          '@col' => $variable['column'],
+          '@msg' => $e->getMessage(),
+        ]));
+      }
     }
-    return;
   }
 
-  protected function populateObjects($namespaces) {
+  // ============================================================================
+  // “Data Dictionary” helpers (Objects)
+  // ============================================================================
+
+  /**
+   * Monta o array “objects” a partir do SDD.
+   *
+   * @param array $namespaces
+   *   Mapa de prefixos → URIs para nominar entidades, se necessário.
+   * @return array
+   *   [
+   *     listPosition => [
+   *       'column' => string,
+   *       'entity' => string,
+   *       'role' => string,
+   *       'relation' => string,
+   *       'in_relation_to' => string,
+   *       'was_derived_from' => string,
+   *     ],
+   *     …
+   *   ]
+   */
+  protected function populateObjects(array $namespaces) {
     $objects = [];
     $objs = $this->getSemanticDataDictionary()->objects;
-    if (count($objs) > 0) {
-      foreach ($objs as $obj_id => $obj) {
-        if (isset($obj_id) && isset($obj)) {
-          $listPosition = $obj->listPosition;
-          $objects[$listPosition]['column']            = $obj->label;
-          $objects[$listPosition]['entity']            = Utils::namespaceUriWithNS($obj->entity,$namespaces);
-          $objects[$listPosition]['role']              = Utils::namespaceUriWithNS($obj->role,$namespaces);
-          $objects[$listPosition]['relation']          = Utils::namespaceUriWithNS($obj->relation,$namespaces);
-          $objects[$listPosition]['in_relation_to']    = $obj->inRelationTo;
-          $objects[$listPosition]['was_derived_from']  = $obj->wasDerivedFrom;
-        }
+    if (is_array($objs) && count($objs) > 0) {
+      foreach ($objs as $oid => $obj) {
+        $pos = $obj->listPosition;
+        $objects[$pos] = [
+          'column' => $obj->label,
+          'entity' => Utils::namespaceUriWithNS($obj->entity, $namespaces),
+          'role' => Utils::namespaceUriWithNS($obj->role, $namespaces),
+          'relation' => Utils::namespaceUriWithNS($obj->relation, $namespaces),
+          'in_relation_to' => $obj->inRelationTo,
+          'was_derived_from' => $obj->wasDerivedFrom,
+        ];
       }
       ksort($objects);
     }
     \Drupal::state()->set('my_form_objects', $objects);
-
     return $objects;
   }
 
-  protected function saveObjects($semanticDataDictionaryUri, array $objects) {
-    if (!isset($semanticDataDictionaryUri)) {
-      \Drupal::messenger()->addError(t("No semantic data dictionary's URI have been provided to save objects."));
+  /**
+   * Renderiza cada linha da tabela “Objects” como container readonly.
+   *
+   * @param array $objects
+   *   [
+   *     listPosition => [
+   *       'column' => string,
+   *       'entity' => string,
+   *       'role' => string,
+   *       'relation' => string,
+   *       'in_relation_to' => string,
+   *       'was_derived_from' => string,
+   *     ],
+   *     …
+   *   ]
+   *
+   * @return array
+   *   Render array com várias linhas de objetos.
+   */
+  protected function renderObjectRows(array $objects) {
+    $rows = [];
+
+    foreach ($objects as $delta => $object) {
+      $rows[] = [
+        '#type' => 'container',
+        '#attributes' => ['class' => ['row', 'mb-2']],
+        'column' => [
+          '#type' => 'textfield',
+          '#value' => $object['column'],
+          '#disabled' => TRUE,
+          '#attributes' => ['class' => ['form-control-plaintext']],
+          '#prefix' => '<div class="col">',
+          '#suffix' => '</div>',
+        ],
+        'entity' => [
+          '#type' => 'textfield',
+          '#value' => $object['entity'],
+          '#disabled' => TRUE,
+          '#attributes' => ['class' => ['form-control-plaintext']],
+          '#prefix' => '<div class="col">',
+          '#suffix' => '</div>',
+        ],
+        'role' => [
+          '#type' => 'textfield',
+          '#value' => $object['role'],
+          '#disabled' => TRUE,
+          '#attributes' => ['class' => ['form-control-plaintext']],
+          '#prefix' => '<div class="col">',
+          '#suffix' => '</div>',
+        ],
+        'relation' => [
+          '#type' => 'textfield',
+          '#value' => $object['relation'],
+          '#disabled' => TRUE,
+          '#attributes' => ['class' => ['form-control-plaintext']],
+          '#prefix' => '<div class="col">',
+          '#suffix' => '</div>',
+        ],
+        'in_relation_to' => [
+          '#type' => 'textfield',
+          '#value' => $object['in_relation_to'],
+          '#disabled' => TRUE,
+          '#attributes' => ['class' => ['form-control-plaintext']],
+          '#prefix' => '<div class="col">',
+          '#suffix' => '</div>',
+        ],
+        'was_derived_from' => [
+          '#type' => 'textfield',
+          '#value' => $object['was_derived_from'],
+          '#disabled' => TRUE,
+          '#attributes' => ['class' => ['form-control-plaintext']],
+          '#prefix' => '<div class="col">',
+          '#suffix' => '</div>',
+        ],
+      ];
+    }
+
+    return $rows;
+  }
+
+  /**
+   * No momento do Save, recria cada “object” via RPC.
+   *
+   * @param string $sdd_uri
+   *   URI completa do SDD.
+   * @param array $objects
+   *   [
+   *     listPosition => [
+   *       'column' => string,
+   *       'entity' => string,
+   *       'role' => string,
+   *       'relation' => string,
+   *       'in_relation_to' => string,
+   *       'was_derived_from' => string,
+   *     ],
+   *     …
+   *   ]
+   */
+  protected function saveObjects($sdd_uri, array $objects) {
+    if (empty($sdd_uri)) {
+      \Drupal::messenger()->addError($this->t('Cannot save objects: missing SDD URI.'));
       return;
     }
-    if (!isset($objects) || !is_array($objects)) {
-      \Drupal::messenger()->addWarning(t("Semantic data dictionary has no objects to be saved."));
+    if (empty($objects) || !is_array($objects)) {
       return;
     }
 
-    foreach ($objects as $object_id => $object) {
-      if (isset($object_id) && isset($object)) {
-        try {
-          $useremail = \Drupal::currentUser()->getEmail();
+    $api = \Drupal::service('rep.api_connector');
+    $useremail = \Drupal::currentUser()->getEmail();
 
-          $column = ' ';
-          if ($objects[$object_id]['column'] != NULL && $objects[$object_id]['column'] != '') {
-            $column = $objects[$object_id]['column'];
-          }
+    foreach ($objects as $oid => $object) {
+      // Monta URI de cada objeto.
+      $object_uri = str_replace(
+        Constant::PREFIX_SEMANTIC_DATA_DICTIONARY,
+        Constant::PREFIX_SDD_OBJECT,
+        $sdd_uri
+      ) . '/' . $oid;
 
-          $entity = ' ';
-          if ($objects[$object_id]['entity'] != NULL && $objects[$object_id]['entity'] != '') {
-            $entity = $objects[$object_id]['entity'];
-          }
-
-          $role = ' ';
-          if ($objects[$object_id]['role'] != NULL && $objects[$object_id]['role'] != '') {
-            $role = $objects[$object_id]['role'];
-          }
-
-          $relation = ' ';
-          if ($objects[$object_id]['relation'] != NULL && $objects[$object_id]['relation'] != '') {
-            $relation = $objects[$object_id]['relation'];
-          }
-
-          $inRelationTo = ' ';
-          if ($objects[$object_id]['in_relation_to'] != NULL && $objects[$object_id]['in_relation_to'] != '') {
-            $inRelationTo = $objects[$object_id]['in_relation_to'];
-          }
-
-          $wasDerivedFrom = ' ';
-          if ($objects[$object_id]['was_derived_from'] != NULL && $objects[$object_id]['was_derived_from'] != '') {
-            $wasDerivedFrom = $objects[$object_id]['was_derived_from'];
-          }
-
-          $objectUri = str_replace(
-            Constant::PREFIX_SEMANTIC_DATA_DICTIONARY,
-            Constant::PREFIX_SDD_OBJECT,
-            $semanticDataDictionaryUri) . '/' . $object_id;
-          $objectJSON = '{"uri":"'. $objectUri .'",'.
-              '"typeUri":"'.HASCO::SDD_OBJECT.'",'.
-              '"hascoTypeUri":"'.HASCO::SDD_OBJECT.'",'.
-              '"partOfSchema":"'.$semanticDataDictionaryUri.'",'.
-              '"listPosition":"'.$object_id.'",'.
-              '"label":"'.$column.'",'.
-              '"entity":"' . $entity . '",' .
-              '"role":"' . $role . '",' .
-              '"relation":"' . $relation . '",' .
-              '"inRelationTo":"' . $inRelationTo . '",' .
-              '"wasDerivedFrom":"' . $wasDerivedFrom . '",' .
-              '"comment":"Column ' . $column . ' of ' . $semanticDataDictionaryUri . '",'.
-              '"hasSIRManagerEmail":"'.$useremail.'"}';
-          $api = \Drupal::service('rep.api_connector');
-          $api->elementAdd('sddobject',$objectJSON);
-
-          //dpm($objectJSON);
-
-        } catch(\Exception $e){
-          \Drupal::messenger()->addError(t("An error occurred while saving an SDDObject: ".$e->getMessage()));
-        }
-      }
-    }
-    return;
-  }
-
-  public function addObjectRow() {
-
-    // Retrieve existing rows from form state or initialize as empty.
-    $objects = \Drupal::state()->get('my_form_objects') ?? [];
-
-    // Add a new row to the table.
-    $objects[] = [
-      'column' => '',
-      'entity' => '',
-      'role' => '',
-      'relation' => '',
-      'in_relation_to' => '',
-      'was_derived_from' => '',
-    ];
-    // Update the form state with the new rows.
-    \Drupal::state()->set('my_form_objects', $objects);
-
-    // Rebuild the table rows.
-    $form['objects']['rows'] = $this->renderObjectRows($objects);
-
-  }
-
-  public function removeObjectRow($button_name) {
-    $objects = \Drupal::state()->get('my_form_objects') ?? [];
-
-    // from button name's value, determine which row to remove.
-    $parts = explode('_', $button_name);
-    $object_to_remove = (isset($parts) && is_array($parts)) ? (int) (end($parts)) : null;
-
-    if (isset($object_to_remove) && $object_to_remove > -1) {
-      unset($objects[$object_to_remove]);
-      $objects = array_values($objects);
-      \Drupal::state()->set('my_form_objects', $objects);
-    }
-    return;
-  }
-
-  /******************************
-   *
-   *    CODE'S FUNCTIONS
-   *
-   ******************************/
-
-   protected function renderCodeRows(array $codes) {
-    $form_rows = [];
-    $separator = '<div class="w-100"></div>';
-    foreach ($codes as $delta => $code) {
-
-      $form_row = array(
-        'column' => array(
-          'top' => array(
-            '#type' => 'markup',
-            '#markup' => '<div class="pt-3 col border border-white">',
-          ),
-          'main' => array(
-            '#type' => 'textfield',
-            '#name' => 'code_column_' . $delta,
-            '#default_value' => $code['column'],
-          ),
-          'bottom' => array(
-            '#type' => 'markup',
-            '#markup' => '</div>',
-          ),
-        ),
-        'code' => array(
-          'top' => array(
-            '#type' => 'markup',
-            '#markup' => '<div class="pt-3 col border border-white">',
-          ),
-          'main' => array(
-            '#type' => 'textfield',
-            '#name' => 'code_code_' . $delta,
-            '#default_value' => $code['code'],
-          ),
-          'bottom' => array(
-            '#type' => 'markup',
-            '#markup' => '</div>',
-          ),
-        ),
-        'label' => array(
-          'top' => array(
-            '#type' => 'markup',
-            '#markup' => '<div class="pt-3 col border border-white">',
-          ),
-          'main' => array(
-            '#type' => 'textfield',
-            '#name' => 'code_label_' . $delta,
-            '#default_value' => $code['label'],
-          ),
-          'bottom' => array(
-            '#type' => 'markup',
-            '#markup' => '</div>',
-          ),
-        ),
-        'class' => array(
-          'top' => array(
-            '#type' => 'markup',
-            '#markup' => '<div class="pt-3 col border border-white">',
-          ),
-          'main' => array(
-            '#type' => 'textfield',
-            '#name' => 'code_class_' . $delta,
-            '#default_value' => $code['class'],
-          ),
-          'bottom' => array(
-            '#type' => 'markup',
-            '#markup' => '</div>',
-          ),
-        ),
-        'operations' => array(
-          'top' => array(
-            '#type' => 'markup',
-            '#markup' => '<div class="pt-3 col-md-1 border border-white">',
-          ),
-          'main' => array(
-            '#type' => 'submit',
-            '#name' => 'code_remove_' . $delta,
-            '#value' => $this->t('Remove'),
-            '#attributes' => array(
-              'class' => array('remove-row', 'btn', 'btn-sm', 'delete-element-button'),
-              'id' => 'code-' . $delta,
-            ),
-          ),
-          'bottom' => array(
-            '#type' => 'markup',
-            '#markup' => '</div>' . $separator,
-          ),
-        ),
-      );
-
-      $rowId = 'row' . $delta;
-      $form_rows[] = [
-        $rowId => $form_row,
+      // Prepara payload JSON.
+      $payload = [
+        'uri' => $object_uri,
+        'typeUri' => HASCO::SDD_OBJECT,
+        'hascoTypeUri' => HASCO::SDD_OBJECT,
+        'partOfSchema' => $sdd_uri,
+        'listPosition' => (string) $oid,
+        'label' => $object['column'] ?: ' ',
+        'entity' => $object['entity'] ?: ' ',
+        'role' => $object['role'] ?: ' ',
+        'relation' => $object['relation'] ?: ' ',
+        'inRelationTo' => $object['in_relation_to'] ?: ' ',
+        'wasDerivedFrom' => $object['was_derived_from'] ?: ' ',
+        'comment' => 'Column ' . $object['column'] . ' of ' . $sdd_uri,
+        'hasSIRManagerEmail' => $useremail,
       ];
 
-    }
-    return $form_rows;
-  }
-
-  protected function updateCodes(FormStateInterface $form_state) {
-    $codes = \Drupal::state()->get('my_form_codes');
-    $input = $form_state->getUserInput();
-    if (isset($input) && is_array($input) &&
-        isset($codes) && is_array($codes)) {
-
-      foreach ($codes as $code_id => $code) {
-        if (isset($code_id) && isset($code)) {
-          $codes[$code_id]['column']  = $input['code_column_' . $code_id] ?? '';
-          $codes[$code_id]['code']    = $input['code_code_' . $code_id] ?? '';
-          $codes[$code_id]['label']   = $input['code_label_' . $code_id] ?? '';
-          $codes[$code_id]['class']   = $input['code_class_' . $code_id] ?? '';
-        }
+      try {
+        $api->elementAdd('sddobject', json_encode($payload));
       }
-      \Drupal::state()->set('my_form_codes', $codes);
+      catch (\Exception $e) {
+        \Drupal::messenger()->addError($this->t('Error saving object @col: @msg', [
+          '@col' => $object['column'],
+          '@msg' => $e->getMessage(),
+        ]));
+      }
     }
-    return;
   }
 
-  protected function populateCodes($namespaces) {
+  // ============================================================================
+  // “Codebook” helpers (Possible Values / Codes)
+  // ============================================================================
+
+  /**
+   * Monta o array “codes” (possibleValues) do SDD.
+   *
+   * @param array $namespaces
+   *   Mapa de prefixo → URI para namespacing.
+   * @return array
+   *   [
+   *     listPosition => [
+   *       'column' => string,
+   *       'code' => string,
+   *       'label' => string,
+   *       'class' => string,
+   *     ],
+   *     …
+   *   ]
+   */
+  protected function populateCodes(array $namespaces) {
     $codes = [];
-    $possibleValues = $this->getSemanticDataDictionary()->possibleValues;
-    if (count($possibleValues) > 0) {
-      foreach ($possibleValues as $possibleValue_id => $possibleValue) {
-        if (isset($possibleValue_id) && isset($possibleValue)) {
-          $listPosition = $possibleValue->listPosition;
-          $codes[$listPosition]['column']  = $possibleValue->isPossibleValueOf;
-          $codes[$listPosition]['code']    = $possibleValue->hasCode;
-          $codes[$listPosition]['label']   = $possibleValue->hasCodeLabel;
-          $codes[$listPosition]['class']   = Utils::namespaceUriWithNS($possibleValue->hasClass,$namespaces);
-        }
+    $possible_values = $this->getSemanticDataDictionary()->possibleValues;
+    if (is_array($possible_values) && count($possible_values) > 0) {
+      foreach ($possible_values as $cid => $pv) {
+        $pos = $pv->listPosition;
+        $codes[$pos] = [
+          'column' => $pv->isPossibleValueOf,
+          'code' => $pv->hasCode,
+          'label' => $pv->hasCodeLabel,
+          'class' => Utils::namespaceUriWithNS($pv->hasClass, $namespaces),
+        ];
       }
       ksort($codes);
     }
@@ -1335,227 +880,130 @@ class ViewSemanticDataDictionaryForm extends FormBase {
     return $codes;
   }
 
-  protected function saveCodes($semanticDataDictionaryUri, array $codes) {
-    if (!isset($semanticDataDictionaryUri)) {
-      \Drupal::messenger()->addError(t("No semantic data dictionary's URI have been provided to save possible values."));
-      return;
-    }
-    if (!isset($codes) || !is_array($codes)) {
-      \Drupal::messenger()->addWarning(t("Semantic data dictionary has no possible values to be saved."));
-      return;
-    }
-
-    foreach ($codes as $code_id => $code) {
-      if (isset($code_id) && isset($code)) {
-        try {
-          $useremail = \Drupal::currentUser()->getEmail();
-
-          $column = ' ';
-          if ($codes[$code_id]['column'] != NULL && $codes[$code_id]['column'] != '') {
-            $column = $codes[$code_id]['column'];
-          }
-
-          $codeStr = ' ';
-          if ($codes[$code_id]['code'] != NULL && $codes[$code_id]['code'] != '') {
-            $codeStr = $codes[$code_id]['code'];
-          }
-
-          $codeLabel = ' ';
-          if ($codes[$code_id]['label'] != NULL && $codes[$code_id]['label'] != '') {
-            $codeLabel = $codes[$code_id]['label'];
-          }
-
-          $class = ' ';
-          if ($codes[$code_id]['class'] != NULL && $codes[$code_id]['class'] != '') {
-            $class = $codes[$code_id]['class'];
-          }
-
-          $codeUri = str_replace(
-            Constant::PREFIX_SEMANTIC_DATA_DICTIONARY,
-            Constant::PREFIX_POSSIBLE_VALUE,
-            $semanticDataDictionaryUri) . '/' . $code_id;
-          $codeJSON = '{"uri":"'. $codeUri .'",'.
-              '"superUri":"'.HASCO::POSSIBLE_VALUE.'",'.
-              '"hascoTypeUri":"'.HASCO::POSSIBLE_VALUE.'",'.
-              '"partOfSchema":"'.$semanticDataDictionaryUri.'",'.
-              '"listPosition":"'.$code_id.'",'.
-              '"isPossibleValueOf":"'.$column.'",'.
-              '"label":"'.$column.'",'.
-              '"hasCode":"' . $codeStr . '",' .
-              '"hasCodeLabel":"' . $codeLabel . '",' .
-              '"hasClass":"' . $class . '",' .
-              '"comment":"Possible value ' . $column . ' of ' . $column . ' of SDD ' . $semanticDataDictionaryUri . '",'.
-              '"hasSIRManagerEmail":"'.$useremail.'"}';
-          $api = \Drupal::service('rep.api_connector');
-          $api->elementAdd('possiblevalue',$codeJSON);
-
-          //dpm($codeJSON);
-
-        } catch(\Exception $e){
-          \Drupal::messenger()->addError(t("An error occurred while saving possible value(s): ".$e->getMessage()));
-        }
-      }
-    }
-    return;
-  }
-
-  public function addCodeRow() {
-    $codes = \Drupal::state()->get('my_form_codes') ?? [];
-
-    // Add a new row to the table.
-    $codes[] = [
-      'column' => '',
-      'code' => '',
-      'label' => '',
-      'class' => '',
-    ];
-    \Drupal::state()->set('my_form_codes', $codes);
-
-    // Rebuild the table rows.
-    $form['codes']['rows'] = $this->renderCodeRows($codes);
-    return;
-  }
-
-  public function removeCodeRow($button_name) {
-    $codes = \Drupal::state()->get('my_form_codes') ?? [];
-
-    // from button name's value, determine which row to remove.
-    $parts = explode('_', $button_name);
-    $code_to_remove = (isset($parts) && is_array($parts)) ? (int) (end($parts)) : null;
-
-    if (isset($code_to_remove) && $code_to_remove > -1) {
-      unset($codes[$code_to_remove]);
-      $codes = array_values($codes);
-      \Drupal::state()->set('my_form_codes', $codes);
-    }
-    return;
-  }
-
-  /* ================================================================================ *
+  /**
+   * Renderiza cada linha da tabela “Codes” como container readonly.
    *
-   *                                 SUBMIT FORM
+   * @param array $codes
+   *   [
+   *     listPosition => [
+   *       'column' => string,
+   *       'code' => string,
+   *       'label' => string,
+   *       'class' => string,
+   *     ],
+   *     …
+   *   ]
    *
-   * ================================================================================ */
+   * @return array
+   *   Render array com várias linhas de códigos.
+   */
+  protected function renderCodeRows(array $codes) {
+    $rows = [];
+
+    foreach ($codes as $delta => $code) {
+      $rows[] = [
+        '#type' => 'container',
+        '#attributes' => ['class' => ['row', 'mb-2']],
+        'column' => [
+          '#type' => 'textfield',
+          '#default_value' => $code['column'],
+          '#disabled' => TRUE,
+          '#attributes' => ['class' => ['form-control-plaintext']],
+          '#prefix' => '<div class="col">',
+          '#suffix' => '</div>',
+        ],
+        'code' => [
+          '#type' => 'textfield',
+          '#default_value' => $code['code'],
+          '#disabled' => TRUE,
+          '#attributes' => ['class' => ['form-control-plaintext']],
+          '#prefix' => '<div class="col">',
+          '#suffix' => '</div>',
+        ],
+        'label' => [
+          '#type' => 'textfield',
+          '#default_value' => $code['label'],
+          '#disabled' => TRUE,
+          '#attributes' => ['class' => ['form-control-plaintext']],
+          '#prefix' => '<div class="col">',
+          '#suffix' => '</div>',
+        ],
+        'class' => [
+          '#type' => 'textfield',
+          '#default_value' => $code['class'],
+          '#disabled' => TRUE,
+          '#attributes' => ['class' => ['form-control-plaintext']],
+          '#prefix' => '<div class="col">',
+          '#suffix' => '</div>',
+        ],
+      ];
+    }
+
+    return $rows;
+  }
 
   /**
-   * {@inheritdoc}
+   * No momento do Save, recria cada “code” via REP API.
+   *
+   * @param string $sdd_uri
+   *   URI completa do SDD.
+   * @param array $codes
+   *   [
+   *     listPosition => [
+   *       'column' => string,
+   *       'code' => string,
+   *       'label' => string,
+   *       'class' => string,
+   *     ],
+   *     …
+   *   ]
    */
-  public function submitForm(array &$form, FormStateInterface $form_state) {
-
-    // IDENTIFY NAME OF BUTTON triggering submitForm()
-    $submitted_values = $form_state->cleanValues()->getValues();
-    $triggering_element = $form_state->getTriggeringElement();
-    $button_name = $triggering_element['#name'];
-
-    if ($button_name === 'back') {
-      // Release values cached in the editor before leaving it
-      \Drupal::state()->delete('my_form_basic');
-      \Drupal::state()->delete('my_form_variables');
-      \Drupal::state()->delete('my_form_objects');
-      \Drupal::state()->delete('my_form_codes');
-      self::backUrl();
+  protected function saveCodes($sdd_uri, array $codes) {
+    if (empty($sdd_uri)) {
+      \Drupal::messenger()->addError($this->t('Cannot save codes: missing SDD URI.'));
+      return;
+    }
+    if (empty($codes) || !is_array($codes)) {
       return;
     }
 
-    // If not leaving then UPDATE STATE OF VARIABLES, OBJECTS AND CODES
-    // according to the current state of the editor
-    if ($this->getState() === 'basic') {
-      $this->updateBasic($form_state);
-    }
+    $api = \Drupal::service('rep.api_connector');
+    $useremail = \Drupal::currentUser()->getEmail();
 
-    if ($this->getState() === 'dictionary') {
-      $this->updateVariables($form_state);
-      $this->updateObjects($form_state);
-    }
+    foreach ($codes as $cid => $code) {
+      // Monta URI do possível valor:
+      $code_uri = str_replace(
+        Constant::PREFIX_SEMANTIC_DATA_DICTIONARY,
+        Constant::PREFIX_POSSIBLE_VALUE,
+        $sdd_uri
+      ) . '/' . $cid;
 
-    if ($this->getState() === 'codebook') {
-      $this->updateCodes($form_state);
-    }
+      // Prepara payload JSON:
+      $payload = [
+        'uri' => $code_uri,
+        'superUri' => HASCO::POSSIBLE_VALUE,
+        'hascoTypeUri' => HASCO::POSSIBLE_VALUE,
+        'partOfSchema' => $sdd_uri,
+        'listPosition' => (string) $cid,
+        'isPossibleValueOf' => $code['column'] ?: ' ',
+        'label' => $code['column'] ?: ' ',
+        'hasCode' => $code['code'] ?: ' ',
+        'hasCodeLabel' => $code['label'] ?: ' ',
+        'hasClass' => $code['class'] ?: ' ',
+        'comment' => 'Possible value ' . $code['column'] . ' of ' . $sdd_uri,
+        'hasSIRManagerEmail' => $useremail,
+      ];
 
-    // Get the latest cached versions of values in the editor
-    $basic = \Drupal::state()->get('my_form_basic');
-    $variables = \Drupal::state()->get('my_form_variables');
-    $objects = \Drupal::state()->get('my_form_objects');
-    $codes = \Drupal::state()->get('my_form_codes');
-
-    if ($button_name === 'new_variable') {
-      $this->addVariableRow();
-      return;
-    }
-
-    if (str_starts_with($button_name,'variable_remove_')) {
-      $this->removeVariableRow($button_name);
-      return;
-    }
-
-    if ($button_name === 'new_object') {
-      $this->addObjectRow();
-      return;
-    }
-
-    if (str_starts_with($button_name,'object_remove_')) {
-      $this->removeObjectRow($button_name);
-      return;
-    }
-
-    if ($button_name === 'new_code') {
-      $this->addCodeRow();
-      return;
-    }
-
-    if (str_starts_with($button_name,'code_remove_')) {
-      $this->removeCodeRow($button_name);
-      return;
-    }
-
-    if ($button_name === 'save') {
       try {
-        $useremail = \Drupal::currentUser()->getEmail();
-        $semanticDataDictionaryJSON = '{"uri":"'. $basic['uri'] .'",'.
-            '"typeUri":"'.HASCO::SEMANTIC_DATA_DICTIONARY.'",'.
-            '"hascoTypeUri":"'.HASCO::SEMANTIC_DATA_DICTIONARY.'",'.
-            '"label":"'.$basic['name'].'",'.
-            '"hasVersion":"'.$basic['version'].'",'.
-            '"comment":"'.$basic['description'].'",'.
-            '"hasSIRManagerEmail":"'.$useremail.'"}';
-
-        $api = \Drupal::service('rep.api_connector');
-
-        // The DELETE of the semantic data dictionary will also delete the
-        // variables, objects and codes of the dictionary
-        $api->elementDel('semanticdatadictionary',$basic['uri']);
-
-        // In order to update the semantic dictionary it is necessary to
-        // add the following to the dictionary: the dictionary itself, its
-        // variables, its objects and its codes
-        $api->elementAdd('semanticdatadictionary',$semanticDataDictionaryJSON);
-        if (isset($variables)) {
-          $this->saveVariables($basic['uri'],$variables);
-        }
-        if (isset($objects)) {
-          $this->saveObjects($basic['uri'],$objects);
-        }
-        if (isset($codes)) {
-          $this->saveCodes($basic['uri'],$codes);
-        }
-
-        // Release values cached in the editor
-        \Drupal::state()->delete('my_form_basic');
-        \Drupal::state()->delete('my_form_variables');
-        \Drupal::state()->delete('my_form_objects');
-        \Drupal::state()->delete('my_form_codes');
-
-        \Drupal::messenger()->addMessage(t("Semantic Data Dictionary has been updated successfully."));
-        self::backUrl();
-        return;
-
-      } catch(\Exception $e){
-        \Drupal::messenger()->addMessage(t("An error occurred while updating a semantic data dictionary: ".$e->getMessage()));
-        self::backUrl();
-        return;
+        $api->elementAdd('possiblevalue', json_encode($payload));
+      }
+      catch (\Exception $e) {
+        \Drupal::messenger()->addError($this->t('Error saving code for column @col: @msg', [
+          '@col' => $code['column'],
+          '@msg' => $e->getMessage(),
+        ]));
       }
     }
-
   }
 
 }
