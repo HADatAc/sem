@@ -10,6 +10,7 @@ use Drupal\rep\Utils;
 use Drupal\rep\Entity\Tables;
 use Drupal\rep\Vocabulary\HASCO;
 use Symfony\Component\HttpFoundation\Request;
+use Symfony\Component\HttpFoundation\RedirectResponse;
 
 /**
  * Provides a tabbed form for viewing and editing a Semantic Data Dictionary (SDD).
@@ -89,41 +90,20 @@ class ViewSemanticDataDictionaryForm extends FormBase {
    *   O formulário renderizável completo.
    */
   public function buildForm(array $form, FormStateInterface $form_state, $form_title = NULL, $state = NULL, $uri = NULL) {
-    // 1) Impede qualquer tipo de cache nesta página.
+
     $form['#cache']['max-age'] = 0;
 
-    // 2) Se o chamador enviar um título customizado, poderemos exibi-lo acima
-    //    do nosso container de tabs (ou simplesmente armazená-lo para uso
-    //    posterior). Para demonstração, vamos guardá-lo numa variável:
-    // if (!empty($form_title)) {
-    //   // Exemplo: podemos exibir como markup logo acima das tabs.
-    //   $form['modal_title'] = [
-    //     '#type' => 'markup',
-    //     '#markup' => '<h2>' . $this->t('@title', ['@title' => $form_title]) . '</h2>',
-    //     '#prefix' => '<div class="sdd-modal-header">',
-    //     '#suffix' => '</div>',
-    //   ];
-    // }
-
-    // 3) Envolvemos todo o form num DIV, para garantir consistência de tema.
     $form['#prefix'] = '<div id="sdd-tabbed-form-wrapper">';
     $form['#suffix'] = '</div>';
 
-    // 4) Inicializa a tabela de namespaces (usada pelos “tree-modal” se precisar).
     $tables = new Tables();
     $namespaces = $tables->getNamespaces();
 
-    // 5) Anexa as bibliotecas de modal ou dialog, caso ainda se usem popups
-    //    dentro deste form. Não é 100% obrigatório para apenas tabs, mas
-    //    mantemos caso haja “tree-dialog” ou seja preciso para operações.
     $form['#attached']['library'][] = 'rep/rep_modal';
     $form['#attached']['library'][] = 'core/drupal.dialog';
 
-    // ================================================================
-    // 1) Decodifica e busca o SDD via REP API a partir do $uri (base64).
-    // ================================================================
     if (empty($uri)) {
-      // Se não veio URI, exibimos mensagem de erro e retornamos o form vazio.
+
       \Drupal::messenger()->addError($this->t('No Semantic Data Dictionary URI provided.'));
       return $form;
     }
@@ -134,27 +114,24 @@ class ViewSemanticDataDictionaryForm extends FormBase {
       \Drupal::messenger()->addError($this->t('Failed to retrieve Semantic Data Dictionary.'));
       return $form;
     }
-    // Armazena o objeto carregado para uso nos helpers.
+
     $this->setSemanticDataDictionary($sdd_object);
 
-    // ================================================================
-    // 2) Popula três arrays em memória:
-    //    a) $basic    => [ 'uri','name','version','description' ]
-    //    b) $variables => listPosition => [ coluna, atributo, is_attribute_of, unit, time, in_relation_to, was_derived_from ]
-    //    c) $objects   => listPosition => [ coluna, entity, role, relation, in_relation_to, was_derived_from ]
-    //    d) $codes     => listPosition => [ coluna, code, label, class ]
-    // ================================================================
     $basic = $this->populateBasic();
     $variables = $this->populateVariables($namespaces);
     $objects = $this->populateObjects($namespaces);
     $codes = $this->populateCodes($namespaces);
 
     // ================================================================
-    // 3) Constrói o container de vertical tabs.
+    // 3) Build vertical tabs container
     // ================================================================
     $form['tabs'] = [
       '#type' => 'vertical_tabs',
       '#weight' => 0,
+      '#attributes' => [
+        'class' => [],
+        'style' => 'min-width: 150px!important;',
+      ],
     ];
 
     // ================================================================
@@ -166,7 +143,7 @@ class ViewSemanticDataDictionaryForm extends FormBase {
       '#group' => 'tabs',
       '#open' => TRUE,
     ];
-    // – Nome do SDD (readonly).
+
     $form['basic_tab']['semantic_data_dictionary_name'] = [
       '#type' => 'textfield',
       '#title' => $this->t('Name'),
@@ -176,14 +153,14 @@ class ViewSemanticDataDictionaryForm extends FormBase {
         'class' => ['mt-3'],
       ],
     ];
-    // – Versão do SDD (readonly).
+
     $form['basic_tab']['semantic_data_dictionary_version'] = [
       '#type' => 'textfield',
       '#title' => $this->t('Version'),
       '#default_value' => $basic['version'] ?? '',
       '#disabled' => TRUE,
     ];
-    // – Descrição do SDD (readonly textarea).
+
     $form['basic_tab']['semantic_data_dictionary_description'] = [
       '#type' => 'textarea',
       '#title' => $this->t('Description'),
@@ -199,12 +176,12 @@ class ViewSemanticDataDictionaryForm extends FormBase {
       '#title' => $this->t('Data Dictionary'),
       '#group' => 'tabs',
     ];
-    // – Título “Variables” (apenas markup HTML).
+
     $form['dictionary_tab']['variables_title'] = [
       '#type' => 'markup',
       '#markup' => '<br /><h4>' . $this->t('Variables') . '</h4>',
     ];
-    // – Container para exibir a tabela de variáveis (readonly).
+
     $form['dictionary_tab']['variables'] = [
       '#type' => 'container',
       '#attributes' => [
@@ -215,7 +192,7 @@ class ViewSemanticDataDictionaryForm extends FormBase {
       ],
       '#disabled' => TRUE,
     ];
-    // – Cabeçalho fixo da tabela de variáveis (markup).
+
     $form['dictionary_tab']['variables']['header'] = [
       '#type' => 'markup',
       '#markup' =>
@@ -227,15 +204,14 @@ class ViewSemanticDataDictionaryForm extends FormBase {
         '<div class="p-2 col bg-secondary text-white border border-white">In Relation To</div>' .
         '<div class="p-2 col bg-secondary text-white border border-white">Derived From</div>',
     ];
-    // – Renderiza dinamicamente cada linha de variável.
+
     $form['dictionary_tab']['variables']['rows'] = $this->renderVariableRows($variables);
 
-    // – Título “Objects”:
     $form['dictionary_tab']['objects_title'] = [
       '#type' => 'markup',
       '#markup' => '<br /><h4>' . $this->t('Objects') . '</h4>',
     ];
-    // – Container para a tabela de objetos (readonly).
+
     $form['dictionary_tab']['objects'] = [
       '#type' => 'container',
       '#attributes' => [
@@ -246,7 +222,7 @@ class ViewSemanticDataDictionaryForm extends FormBase {
       ],
       '#disabled' => TRUE,
     ];
-    // – Cabeçalho fixo da tabela de objetos.
+
     $form['dictionary_tab']['objects']['header'] = [
       '#type' => 'markup',
       '#markup' =>
@@ -257,7 +233,7 @@ class ViewSemanticDataDictionaryForm extends FormBase {
         '<div class="p-2 col bg-secondary text-white border border-white">In Relation To</div>' .
         '<div class="p-2 col bg-secondary text-white border border-white">Derived From</div>',
     ];
-    // – Renderiza cada linha de objeto.
+
     $form['dictionary_tab']['objects']['rows'] = $this->renderObjectRows($objects);
 
     // ================================================================
@@ -268,12 +244,12 @@ class ViewSemanticDataDictionaryForm extends FormBase {
       '#title' => $this->t('Codebook'),
       '#group' => 'tabs',
     ];
-    // – Título “Codes”.
+
     $form['codebook_tab']['codes_title'] = [
       '#type' => 'markup',
       '#markup' => '<br ><h4>' . $this->t('Codes') . '</h4>',
     ];
-    // – Container para mostrar tabela de códigos (readonly).
+
     $form['codebook_tab']['codes'] = [
       '#type' => 'container',
       '#attributes' => [
@@ -284,7 +260,7 @@ class ViewSemanticDataDictionaryForm extends FormBase {
       ],
       '#disabled' => TRUE,
     ];
-    // – Cabeçalho fixo da tabela de códigos.
+
     $form['codebook_tab']['codes']['header'] = [
       '#type' => 'markup',
       '#markup' =>
@@ -293,29 +269,29 @@ class ViewSemanticDataDictionaryForm extends FormBase {
         '<div class="p-2 col bg-secondary text-white border border-white">Label</div>' .
         '<div class="p-2 col bg-secondary text-white border border-white">Class</div>',
     ];
-    // – Renderiza cada linha de código.
+
     $form['codebook_tab']['codes']['rows'] = $this->renderCodeRows($codes);
 
-    // ================================================================
-    // 7) Botões de ação (Save, Back):
-    // ================================================================
     $form['actions'] = [
       '#type' => 'actions',
       '#weight' => 100,
     ];
-    // Se quiser ativar o botão “Save”, remova os comentários abaixo:
+
     // $form['actions']['save'] = [
     //   '#type' => 'submit',
     //   '#value' => $this->t('Save'),
     //   '#button_type' => 'primary',
     // ];
-    // Para ativar “Back”, remova comentários e implemente backButtonSubmit():
-    // $form['actions']['back'] = [
-    //   '#type' => 'submit',
-    //   '#value' => $this->t('Back'),
-    //   '#button_type' => 'secondary',
-    //   '#submit' => ['::backButtonSubmit'],
-    // ];
+
+    $form['actions']['back'] = [
+      '#type' => 'submit',
+      '#value' => $this->t('Back'),
+      '#button_type' => 'secondary',
+      '#attributes' => [
+        'class' => ['btn', 'btn-secondary', 'back-button', 'mb-5'],
+      ],
+      '#submit' => ['::backButtonSubmit'],
+    ];
 
     return $form;
   }
@@ -330,9 +306,13 @@ class ViewSemanticDataDictionaryForm extends FormBase {
     \Drupal::state()->delete('my_form_codes');
 
     // Redireciona para a página anterior ou raiz (caso não exista referer).
-    $referer = \Drupal::request()->headers->get('referer') ?: '/';
-    $response = new \Symfony\Component\HttpFoundation\RedirectResponse($referer);
-    $form_state->setResponse($response);
+    $uid = \Drupal::currentUser()->id();
+    $previousUrl = Utils::trackingGetPreviousUrl($uid, 'sem.manage_study_elements');
+    if ($previousUrl) {
+      $response = new RedirectResponse($previousUrl);
+      $response->send();
+      return;
+    }
   }
 
   /**
