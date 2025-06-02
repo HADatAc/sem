@@ -12,83 +12,22 @@ use Drupal\rep\Vocabulary\HASCO;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\RedirectResponse;
 
-/**
- * Provides a tabbed form for viewing and editing a Semantic Data Dictionary (SDD).
- *
- * Esta versão utiliza tabs verticais em vez do antigo sistema de “pills”
- * AJAX. Ao carregar, todas as secções (“Basic variables”, “Data Dictionary”,
- * “Codebook”) são exibidas num único formulário dentro de um container
- * de vertical tabs.
- *
- * Argumentos esperados em buildForm():
- *   1. $form_title: (string|null) Texto que o chamador AJAX quer exibir
- *      como título do modal (opcional).
- *   2. $state: (string|null) Estado antes usado para saber qual tab estava
- *      ativa (não usamos no mecanismo de tabs verticais, mas deixamos aqui
- *      por compatibilidade).
- *   3. $uri: (string|null) URI codificado em base64 do SDD a carregar.
- *
- * Ao submeter:
- *   - Apaga o SDD antigo via REP API.
- *   - Recria o SDD (JSON com “basic”).
- *   - Itera sobre cada array de variáveis/objetos/códigos e chama a API
- *     para criar cada elemento.
- *   - Limpa caches e redireciona de volta (“Back”).
- */
 class ViewSemanticDataDictionaryForm extends FormBase {
 
-  /**
-   * A instância do SDD carregado pela REP API.
-   *
-   * @var object|null
-   */
   protected $semanticDataDictionary;
 
-  /**
-   * Retorna o SDD carregado.
-   *
-   * @return object|null
-   */
   public function getSemanticDataDictionary() {
     return $this->semanticDataDictionary;
   }
 
-  /**
-   * Define (armazena) o SDD carregado.
-   *
-   * @param object $sdd
-   *   Objeto SDD retornado pela REP API.
-   * @return object
-   */
   public function setSemanticDataDictionary($sdd) {
     return $this->semanticDataDictionary = $sdd;
   }
 
-  /**
-   * {@inheritdoc}
-   */
   public function getFormId() {
     return 'view_semantic_data_dictionary_form';
   }
 
-  /**
-   * {@inheritdoc}
-   *
-   * @param array $form
-   *   Array do formulário.
-   * @param \Drupal\Core\Form\FormStateInterface $form_state
-   *   Estado atual do FormState.
-   * @param string|null $form_title
-   *   Título a exibir no modal (opcional; quem chama via AJAX pode passá-lo).
-   * @param string|null $state
-   *   (Opcional) Estado anterior, hoje não usado para controlar qual tab
-   *   está aberta.
-   * @param string|null $uri
-   *   URI do SDD, codificado em base64.
-   *
-   * @return array
-   *   O formulário renderizável completo.
-   */
   public function buildForm(array $form, FormStateInterface $form_state, $form_title = NULL, $state = NULL, $uri = NULL) {
 
     $form['#cache']['max-age'] = 0;
@@ -186,7 +125,7 @@ class ViewSemanticDataDictionaryForm extends FormBase {
           'row', 'border', 'border-secondary', 'rounded',
         ],
       ],
-      '#disabled' => TRUE,
+      // '#disabled' => TRUE,
     ];
 
     $form['dictionary_tab']['variables']['header'] = [
@@ -216,7 +155,7 @@ class ViewSemanticDataDictionaryForm extends FormBase {
           'row', 'border', 'border-secondary', 'rounded',
         ],
       ],
-      '#disabled' => TRUE,
+      // '#disabled' => TRUE,
     ];
 
     $form['dictionary_tab']['objects']['header'] = [
@@ -506,8 +445,8 @@ class ViewSemanticDataDictionaryForm extends FormBase {
         'attribute' => [
           '#type' => 'textfield',
           '#value' => $variable['attribute'],
-          '#disabled' => TRUE,
-          '#attributes' => ['class' => ['form-control-plaintext']],
+          // '#disabled' => TRUE,
+          // '#attributes' => ['class' => ['form-control-plaintext']],
           '#prefix' => '<div class="col">',
           '#suffix' => '</div>',
         ],
@@ -522,8 +461,8 @@ class ViewSemanticDataDictionaryForm extends FormBase {
         'unit' => [
           '#type' => 'textfield',
           '#value' => $variable['unit'],
-          '#disabled' => TRUE,
-          '#attributes' => ['class' => ['form-control-plaintext']],
+          // '#disabled' => TRUE,
+          // '#attributes' => ['class' => ['form-control-plaintext']],
           '#prefix' => '<div class="col">',
           '#suffix' => '</div>',
         ],
@@ -706,24 +645,24 @@ class ViewSemanticDataDictionaryForm extends FormBase {
         'entity' => [
           '#type' => 'textfield',
           '#value' => $object['entity'],
-          '#disabled' => TRUE,
-          '#attributes' => ['class' => ['form-control-plaintext']],
+          // '#disabled' => TRUE,
+          // '#attributes' => ['class' => ['form-control-plaintext']],
           '#prefix' => '<div class="col">',
           '#suffix' => '</div>',
         ],
         'role' => [
           '#type' => 'textfield',
           '#value' => $object['role'],
-          '#disabled' => TRUE,
-          '#attributes' => ['class' => ['form-control-plaintext']],
+          // '#disabled' => TRUE,
+          // '#attributes' => ['class' => ['form-control-plaintext']],
           '#prefix' => '<div class="col">',
           '#suffix' => '</div>',
         ],
         'relation' => [
           '#type' => 'textfield',
           '#value' => $object['relation'],
-          '#disabled' => TRUE,
-          '#attributes' => ['class' => ['form-control-plaintext']],
+          // '#disabled' => TRUE,
+          // '#attributes' => ['class' => ['form-control-plaintext']],
           '#prefix' => '<div class="col">',
           '#suffix' => '</div>',
         ],
