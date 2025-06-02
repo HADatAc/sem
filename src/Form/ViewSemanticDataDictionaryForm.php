@@ -11,6 +11,7 @@ use Drupal\rep\Entity\Tables;
 use Drupal\rep\Vocabulary\HASCO;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\RedirectResponse;
+use Drupal\Component\Serialization\Json;
 
 class ViewSemanticDataDictionaryForm extends FormBase {
 
@@ -443,12 +444,34 @@ class ViewSemanticDataDictionaryForm extends FormBase {
           '#suffix' => '</div>',
         ],
         'attribute' => [
-          '#type' => 'textfield',
-          '#value' => $variable['attribute'],
-          // '#disabled' => TRUE,
-          // '#attributes' => ['class' => ['form-control-plaintext']],
-          '#prefix' => '<div class="col">',
-          '#suffix' => '</div>',
+          'top' => [
+            '#type' => 'markup',
+            '#markup' => '<div class="col">',
+          ],
+          'main' => [
+            '#type' => 'textfield',
+            '#name' => 'variable_attribute_' . $delta,
+            '#value' => $variable['attribute'],
+            '#attributes' => [
+              'class' => ['open-tree-modal'],
+              'data-dialog-type' => 'modal',
+              'data-dialog-options' => Json::encode(['width' => 800]),
+              'data-url' => Url::fromRoute('rep.tree_form', [
+                'mode' => 'modal',
+                'elementtype' => 'attribute',
+                'silent' => true,
+              ], [
+                'query' => ['field_id' => 'variable_attribute_' . $delta]
+              ])->toString(),
+              'data-field-id' => 'variable_attribute_' . $delta,
+              'data-elementtype' => 'attribute',
+              'autocomplete' => 'off',
+            ],
+          ],
+          'bottom' => [
+            '#type' => 'markup',
+            '#markup' => '</div>',
+          ],
         ],
         'is_attribute_of' => [
           '#type' => 'textfield',
