@@ -10,6 +10,7 @@ use Drupal\rep\Utils;
 use Drupal\rep\Entity\Tables;
 use Drupal\rep\Vocabulary\HASCO;
 use Symfony\Component\HttpFoundation\Request;
+use Symfony\Component\HttpFoundation\RedirectResponse;
 
 /**
  * Provides a tabbed form for viewing and editing a Semantic Data Dictionary (SDD).
@@ -278,12 +279,15 @@ class ViewSemanticDataDictionaryForm extends FormBase {
     //   '#button_type' => 'primary',
     // ];
 
-    // $form['actions']['back'] = [
-    //   '#type' => 'submit',
-    //   '#value' => $this->t('Back'),
-    //   '#button_type' => 'secondary',
-    //   '#submit' => ['::backButtonSubmit'],
-    // ];
+    $form['actions']['back'] = [
+      '#type' => 'submit',
+      '#value' => $this->t('Back'),
+      '#button_type' => 'secondary',
+      '#submit' => ['::backButtonSubmit'],
+      '#attributes' => [
+        'class' => ['btn', 'btn-secondary', 'back-button', 'mb-5'],
+      ],
+    ];
 
     return $form;
   }
@@ -297,10 +301,13 @@ class ViewSemanticDataDictionaryForm extends FormBase {
     \Drupal::state()->delete('my_form_objects');
     \Drupal::state()->delete('my_form_codes');
 
-    // Redireciona para a página anterior ou raiz (caso não exista referer).
-    $referer = \Drupal::request()->headers->get('referer') ?: '/';
-    $response = new \Symfony\Component\HttpFoundation\RedirectResponse($referer);
-    $form_state->setResponse($response);
+    $uid = \Drupal::currentUser()->id();
+    $previousUrl = Utils::trackingGetPreviousUrl($uid, 'std.manage_study_elements');
+    if ($previousUrl) {
+      $response = new RedirectResponse($previousUrl);
+      $response->send();
+      return;
+    }
   }
 
   /**
