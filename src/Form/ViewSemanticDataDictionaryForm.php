@@ -455,17 +455,20 @@ class ViewSemanticDataDictionaryForm extends FormBase {
             '#attributes' => [
               'class' => ['open-tree-modal'],
               'data-dialog-type' => 'modal',
-              'data-dialog-options' => Json::encode(['width' => 800]),
+              'data-dialog-options' => json_encode(['width' => 800]),
               'data-url' => Url::fromRoute('rep.tree_form', [
                 'mode' => 'modal',
                 'elementtype' => 'attribute',
                 'silent' => true,
               ], [
-                'query' => ['field_id' => 'variable_attribute_' . $delta]
+                'query' => [
+                  'field_id'     => 'variable_attribute_' . $delta,
+                  'search_value' => $variable['attribute'],
+                ],
               ])->toString(),
-              'data-field-id' => 'variable_attribute_' . $delta,
+              'data-field-id'    => 'variable_attribute_' . $delta,
+              'data-search-value'=> $variable['attribute'], // opcional, mas podemos usar como fallback
               'data-elementtype' => 'attribute',
-              'autocomplete' => 'off',
             ],
           ],
           'bottom' => [
@@ -482,12 +485,37 @@ class ViewSemanticDataDictionaryForm extends FormBase {
           '#suffix' => '</div>',
         ],
         'unit' => [
-          '#type' => 'textfield',
-          '#value' => $variable['unit'],
-          // '#disabled' => TRUE,
-          // '#attributes' => ['class' => ['form-control-plaintext']],
-          '#prefix' => '<div class="col">',
-          '#suffix' => '</div>',
+          'top' => [
+            '#type' => 'markup',
+            '#markup' => '<div class="col">',
+          ],
+          'main' => [
+            '#type' => 'textfield',
+            '#name' => 'variable_unit_' . $delta,
+            '#value' => $variable['unit'],
+            '#attributes' => [
+              'class' => ['open-tree-modal'],
+              'data-dialog-type' => 'modal',
+              'data-dialog-options' => json_encode(['width' => 800]),
+              'data-url' => Url::fromRoute('rep.tree_form', [
+                'mode' => 'modal',
+                'elementtype' => 'unit',
+                'silent' => true,
+              ], [
+                'query' => [
+                  'field_id'     => 'variable_unit_' . $delta,
+                  'search_value' => $variable['unit'],
+                ],
+              ])->toString(),
+              'data-field-id'    => 'variable_unit_' . $delta,
+              'data-search-value'=> $variable['unit'], // opcional, mas podemos usar como fallback
+              'data-elementtype' => 'unit',
+            ],
+          ],
+          'bottom' => [
+            '#type' => 'markup',
+            '#markup' => '</div>',
+          ],
         ],
         'time' => [
           '#type' => 'textfield',
@@ -666,28 +694,103 @@ class ViewSemanticDataDictionaryForm extends FormBase {
           '#suffix' => '</div>',
         ],
         'entity' => [
-          '#type' => 'textfield',
-          '#value' => $object['entity'],
-          // '#disabled' => TRUE,
-          // '#attributes' => ['class' => ['form-control-plaintext']],
-          '#prefix' => '<div class="col">',
-          '#suffix' => '</div>',
+          'top' => [
+            '#type' => 'markup',
+            '#markup' => '<div class="col">',
+          ],
+          'main' => [
+            '#type' => 'textfield',
+            '#name' => 'object_entity_' . $delta,
+            '#value' => $object['entity'],
+            '#attributes' => [
+              'class' => ['open-tree-modal'],
+              'data-dialog-type' => 'modal',
+              'data-dialog-options' => json_encode(['width' => 800]),
+              'data-url' => Url::fromRoute('rep.tree_form', [
+                'mode' => 'modal',
+                'elementtype' => 'entity',
+                'silent' => true,
+              ], [
+                'query' => [
+                  'field_id'     => 'object_entity_' . $delta,
+                  'search_value' => $object['entity'],
+                ],
+              ])->toString(),
+              'data-field-id'    => 'object_entity_' . $delta,
+              'data-search-value'=> $object['entity'], // opcional, mas podemos usar como fallback
+              'data-elementtype' => 'entity',
+            ],
+          ],
+          'bottom' => [
+            '#type' => 'markup',
+            '#markup' => '</div>',
+          ],
         ],
         'role' => [
-          '#type' => 'textfield',
-          '#value' => $object['role'],
-          // '#disabled' => TRUE,
-          // '#attributes' => ['class' => ['form-control-plaintext']],
-          '#prefix' => '<div class="col">',
-          '#suffix' => '</div>',
+          'top' => [
+            '#type' => 'markup',
+            '#markup' => '<div class="col">',
+          ],
+          'main' => [
+            '#type' => 'textfield',
+            '#name' => 'object_role_' . $delta,
+            '#value' => $object['role'],
+            '#attributes' => [
+              'class' => ['open-tree-modal'],
+              'data-dialog-type' => 'modal',
+              'data-dialog-options' => json_encode(['width' => 800]),
+              'data-url' => Url::fromRoute('rep.tree_form', [
+                'mode' => 'modal',
+                'elementtype' => 'role',
+                'silent' => true,
+              ], [
+                'query' => [
+                  'field_id'     => 'object_role_' . $delta,
+                  'search_value' => $object['role'],
+                ],
+              ])->toString(),
+              'data-field-id'    => 'object_role_' . $delta,
+              'data-search-value'=> $object['role'], // opcional, mas podemos usar como fallback
+              'data-elementtype' => 'role',
+            ],
+          ],
+          'bottom' => [
+            '#type' => 'markup',
+            '#markup' => '</div>',
+          ],
         ],
         'relation' => [
-          '#type' => 'textfield',
-          '#value' => $object['relation'],
-          // '#disabled' => TRUE,
-          // '#attributes' => ['class' => ['form-control-plaintext']],
-          '#prefix' => '<div class="col">',
-          '#suffix' => '</div>',
+          'top' => [
+            '#type' => 'markup',
+            '#markup' => '<div class="col">',
+          ],
+          'main' => [
+            '#type' => 'textfield',
+            '#name' => 'object_relation_' . $delta,
+            '#value' => $object['relation'],
+            '#attributes' => [
+              'class' => ['open-tree-modal'],
+              'data-dialog-type' => 'modal',
+              'data-dialog-options' => json_encode(['width' => 800]),
+              'data-url' => Url::fromRoute('rep.tree_form', [
+                'mode' => 'modal',
+                'elementtype' => 'relation',
+                'silent' => true,
+              ], [
+                'query' => [
+                  'field_id'     => 'object_relation_' . $delta,
+                  'search_value' => $object['relation'],
+                ],
+              ])->toString(),
+              'data-field-id'    => 'object_relation_' . $delta,
+              'data-search-value'=> $object['relation'], // opcional, mas podemos usar como fallback
+              'data-elementtype' => 'relation',
+            ],
+          ],
+          'bottom' => [
+            '#type' => 'markup',
+            '#markup' => '</div>',
+          ],
         ],
         'in_relation_to' => [
           '#type' => 'textfield',
