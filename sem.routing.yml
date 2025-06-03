@@ -63,6 +63,17 @@ sem.edit_semantic_variable:
   options:
     no_cache: 'TRUE'
 
+sem.show_semantic_variable:
+  path: 'sem/manage/showsemanticvariable/{semanticvariableuri}'
+  defaults:
+    _form: '\Drupal\sem\Form\ShowSemanticVariableForm'
+    _title: 'Show Semantic Variable'
+  requirements:
+    _permission: 'access content'
+    _custom_access_check: 'TRUE'
+  options:
+    no_cache: 'TRUE'
+
 # DD options
 
 sem.manage_data_dictionary:

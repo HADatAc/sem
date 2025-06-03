@@ -10,6 +10,9 @@ use Symfony\Component\HttpFoundation\RedirectResponse;
 
 class ShowSemanticVariableForm extends FormBase {
 
+  protected $semanticVariableUri;
+  protected $semanticVariable;
+
   public function getSemanticVariableUri() {
     return $this->semanticVariableUri;
   }
@@ -36,7 +39,7 @@ class ShowSemanticVariableForm extends FormBase {
   /**
    * {@inheritdoc}
    */
-  public function buildForm(array $form, FormStateInterface $form_state) {
+  public function buildForm(array $form, FormStateInterface $form_state, $semanticvariableuri = NULL) {
     $uri=$semanticvariableuri ?? 'default';
     $uri_decode=base64_decode($uri);
     $this->setSemanticVariableUri($uri_decode);
@@ -49,6 +52,8 @@ class ShowSemanticVariableForm extends FormBase {
     } else {
       $this->setSemanticVariable($svar);
     }
+
+    dpm($this->getSemanticVariable(), 'Semantic Variable');
 
     $form['semantic_variable_uddi'] = [
       '#type' => 'textfield',
@@ -114,7 +119,7 @@ class ShowSemanticVariableForm extends FormBase {
       self::backUrl();
       return;
     }
-
+  }
 
   function backUrl() {
     $uid = \Drupal::currentUser()->id();

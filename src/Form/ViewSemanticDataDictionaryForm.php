@@ -436,12 +436,35 @@ class ViewSemanticDataDictionaryForm extends FormBase {
         '#type' => 'container',
         '#attributes' => ['class' => ['row', 'mb-2']],
         'column' => [
-          '#type' => 'textfield',
-          '#value' => $variable['column'],
-          '#disabled' => TRUE,
-          '#attributes' => ['class' => ['form-control-plaintext']],
-          '#prefix' => '<div class="col">',
-          '#suffix' => '</div>',
+          // Container que será uma "col" no grid e usará flexbox para alinhar os itens
+          '#type' => 'container',
+          '#attributes' => [
+            'class' => ['col', 'd-flex', 'align-items-center'],
+          ],
+
+          // --- Textfield desabilitado, mostrando o valor da coluna ---
+          'field' => [
+            '#type' => 'textfield',
+            '#value' => $variable['column'],
+            '#disabled' => TRUE,
+            '#attributes' => [
+              'class' => ['form-control-plaintext', 'me-2'],
+              // "me-2" adiciona margem à direita para espaçar do botão
+            ],
+          ],
+
+          // --- Link estilizado como botão, apontando para a rota desejada ---
+          'button' => [
+            '#type' => 'link',
+            '#title' => t('UDDI'), // ou use $variable['column'] se quiser mostrar esse texto
+            '#url' => Url::fromRoute(
+              'sem.show_semantic_variable',
+              ['semanticvariableuri' => base64_encode(UTILS::plainUri($variable['attribute']))]
+            ),
+            '#attributes' => [
+              'class' => ['btn', 'btn-sm', 'btn-outline-primary', 'mb-3', 'ms-1'],
+            ],
+          ],
         ],
         'attribute' => [
           'top' => [
@@ -463,7 +486,7 @@ class ViewSemanticDataDictionaryForm extends FormBase {
               ], [
                 'query' => [
                   'field_id'     => 'variable_attribute_' . $delta,
-                  'search_value' => $variable['attribute'],
+                  'search_value' => UTILS::plainUri($variable['attribute']),
                 ],
               ])->toString(),
               'data-field-id'    => 'variable_attribute_' . $delta,
