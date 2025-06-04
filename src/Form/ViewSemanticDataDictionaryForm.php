@@ -474,6 +474,7 @@ class ViewSemanticDataDictionaryForm extends FormBase {
           'main' => [
             '#type' => 'textfield',
             '#name' => 'variable_attribute_' . $delta,
+            '#id' => 'variable_attribute_' . $delta,
             '#value' => $variable['attribute'],
             '#attributes' => [
               'class' => ['open-tree-modal'],
@@ -483,6 +484,7 @@ class ViewSemanticDataDictionaryForm extends FormBase {
                 'mode' => 'modal',
                 'elementtype' => 'attribute',
                 'silent' => true,
+                'prefix' => true,
               ], [
                 'query' => [
                   'field_id'     => 'variable_attribute_' . $delta,
@@ -490,7 +492,7 @@ class ViewSemanticDataDictionaryForm extends FormBase {
                 ],
               ])->toString(),
               'data-field-id'    => 'variable_attribute_' . $delta,
-              'data-search-value'=> $variable['attribute'], // opcional, mas podemos usar como fallback
+              'data-search-value'=> UTILS::plainUri($variable['attribute']), // opcional, mas podemos usar como fallback
               'data-elementtype' => 'attribute',
             ],
           ],

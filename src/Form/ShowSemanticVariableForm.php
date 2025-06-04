@@ -53,7 +53,7 @@ class ShowSemanticVariableForm extends FormBase {
       $this->setSemanticVariable($svar);
     }
 
-    dpm($this->getSemanticVariable(), 'Semantic Variable');
+    // dpm($this->getSemanticVariable(), 'Semantic Variable');
 
     $form['semantic_variable_uddi'] = [
       '#type' => 'textfield',
