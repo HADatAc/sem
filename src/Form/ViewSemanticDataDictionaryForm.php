@@ -261,7 +261,8 @@ class ViewSemanticDataDictionaryForm extends FormBase {
       }
     }
     else {
-      $form_state->setRedirectUrl(Url::fromUserInput($previousUrl));
+      $response = new RedirectResponse($previousUrl);
+      $response->send();
       return;
     }
   }
