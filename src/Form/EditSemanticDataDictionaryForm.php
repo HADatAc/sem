@@ -75,7 +75,6 @@ class EditSemanticDataDictionaryForm extends FormBase {
     $form['header']['display_mode'] = [
       '#type'          => 'select',
       '#title'         => $this->t('Display Mode'),
-      '#title_display' => 'invisible',    // esconde o <label> (já está implícito)
       '#options'       => [
         'prefix:uri'   => $this->t('Prefix: URI'),
         'prefix:label' => $this->t('Prefix: Label'),
@@ -84,7 +83,7 @@ class EditSemanticDataDictionaryForm extends FormBase {
       '#default_value' => $display_mode,
       '#wrapper_attributes' => [
         // se quiser limitar a largura
-        'style' => 'max-width: 200px;',
+        'style' => 'max-width: 350px;',
       ],
       '#ajax' => [
         'callback' => '::displayModeAjaxCallback',
