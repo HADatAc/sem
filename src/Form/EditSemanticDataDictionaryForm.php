@@ -67,6 +67,9 @@ class EditSemanticDataDictionaryForm extends FormBase {
         'uri'          => $this->t('URI'),
       ],
       '#default_value' => $display_mode,
+      '#attributes' => [
+        'class' => ['col-md-6']
+      ],
       '#ajax' => [
         'callback' => '::displayModeAjaxCallback',
         'event'    => 'change',
