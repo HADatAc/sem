@@ -52,8 +52,28 @@ class EditSemanticDataDictionaryForm extends FormBase {
     $namespaces = $tables->getNamespaces();
 
     // MODAL
-    $form['#attached']['library'][] = 'rep/rep_modal'; // Biblioteca personalizada do módulo
-    $form['#attached']['library'][] = 'core/drupal.dialog'; // Biblioteca do modal do Drupal
+    $form['#attached']['library'][] = 'rep/rep_modal';
+    $form['#attached']['library'][] = 'core/drupal.dialog';
+
+    // === Display Mode Selector ===
+    $display_mode = $form_state->getValue('display_mode', 'prefix:uri');
+    $form['display_mode'] = [
+      '#type' => 'select',
+      '#title' => $this->t('Display Mode'),
+      '#options' => [
+        'prefix:uri'   => $this->t('Prefix: URI'),
+        'prefix:label' => $this->t('Prefix: Label'),
+        'just label'   => $this->t('Just Label'),
+        'uri'          => $this->t('URI'),
+      ],
+      '#default_value' => $display_mode,
+      '#ajax' => [
+        'callback' => '::displayModeAjaxCallback',
+        'event'    => 'change',
+        'wrapper'  => 'dict-wrapper',
+        'progress' => ['type' => 'throbber'],
+      ],
+    ];
 
     if ($state === 'init') {
       // READ SEMANTIC_DATA_DICTIONARY
@@ -182,18 +202,24 @@ class EditSemanticDataDictionaryForm extends FormBase {
 
     /* ======================= DICTIONARY ======================= */
 
+    // AJAX target container for display‐mode refresh:
+    $form['dict_wrapper'] = [
+      '#type' => 'container',
+      '#attributes' => ['id' => 'dict-wrapper'],
+    ];
+
     if ($this->getState() == 'dictionary') {
 
       /*
       *      VARIABLES
       */
 
-      $form['variables_title'] = [
+      $form['dict_wrapper']['variables_title'] = [
         '#type' => 'markup',
         '#markup' => 'Variables',
       ];
 
-      $form['variables'] = array(
+      $form['dict_wrapper']['variables'] = array(
         '#type' => 'container',
         '#title' => $this->t('variables'),
         '#attributes' => array(
@@ -202,7 +228,7 @@ class EditSemanticDataDictionaryForm extends FormBase {
         ),
       );
 
-      $form['variables']['header'] = array(
+      $form['dict_wrapper']['variables']['header'] = array(
         '#type' => 'markup',
         '#markup' =>
           '<div class="p-2 col bg-secondary text-white border border-white">Column</div>' .
@@ -215,26 +241,26 @@ class EditSemanticDataDictionaryForm extends FormBase {
           '<div class="p-2 col-md-1 bg-secondary text-white border border-white">Operations</div>' . $separator,
       );
 
-      $form['variables']['rows'] = $this->renderVariableRows($variables);
+      $form['dict_wrapper']['variables']['rows'] = $this->renderVariableRows($variables, $display_mode);
 
-      $form['variables']['space_3'] = [
+      $form['dict_wrapper']['variables']['space_3'] = [
         '#type' => 'markup',
         '#markup' => $separator,
       ];
 
-      $form['variables']['actions']['top'] = array(
+      $form['dict_wrapper']['variables']['actions']['top'] = array(
         '#type' => 'markup',
         '#markup' => '<div class="p-3 col">',
       );
 
-      $form['variables']['actions']['add_row'] = [
+      $form['dict_wrapper']['variables']['actions']['add_row'] = [
         '#type' => 'submit',
         '#value' => $this->t('New Variable'),
         '#name' => 'new_variable',
         '#attributes' => array('class' => array('btn', 'btn-sm', 'add-element-button')),
       ];
 
-      $form['variables']['actions']['bottom'] = array(
+      $form['dict_wrapper']['variables']['actions']['bottom'] = array(
         '#type' => 'markup',
         '#markup' => '</div>' . $separator,
       );
@@ -243,12 +269,12 @@ class EditSemanticDataDictionaryForm extends FormBase {
       *      OBJECTS
       */
 
-      $form['objects_title'] = [
+      $form['dict_wrapper']['objects_title'] = [
         '#type' => 'markup',
         '#markup' => 'Objects',
       ];
 
-      $form['objects'] = array(
+      $form['dict_wrapper']['objects'] = array(
         '#type' => 'container',
         '#title' => $this->t('Objects'),
         '#attributes' => array(
@@ -257,7 +283,7 @@ class EditSemanticDataDictionaryForm extends FormBase {
         ),
       );
 
-      $form['objects']['header'] = array(
+      $form['dict_wrapper']['objects']['header'] = array(
         '#type' => 'markup',
         '#markup' =>
           '<div class="p-2 col bg-secondary text-white border border-white">Column</div>' .
@@ -269,26 +295,26 @@ class EditSemanticDataDictionaryForm extends FormBase {
           '<div class="p-2 col-md-1 bg-secondary text-white border border-white">Operations</div>' . $separator,
       );
 
-      $form['objects']['rows'] = $this->renderObjectRows($objects);
+      $form['dict_wrapper']['objects']['rows'] = $this->renderObjectRows($objects, $display_mode);
 
-      $form['objects']['space_3'] = [
+      $form['dict_wrapper']['objects']['space_3'] = [
         '#type' => 'markup',
         '#markup' => $separator,
       ];
 
-      $form['objects']['actions']['top'] = array(
+      $form['dict_wrapper']['objects']['actions']['top'] = array(
         '#type' => 'markup',
         '#markup' => '<div class="p-3 col">',
       );
 
-      $form['objects']['actions']['add_row'] = [
+      $form['dict_wrapper']['objects']['actions']['add_row'] = [
         '#type' => 'submit',
         '#value' => $this->t('New Object'),
         '#name' => 'new_object',
         '#attributes' => array('class' => array('btn', 'btn-sm', 'add-element-button')),
       ];
 
-      $form['objects']['actions']['bottom'] = array(
+      $form['dict_wrapper']['objects']['actions']['bottom'] = array(
         '#type' => 'markup',
         '#markup' => '</div>' . $separator,
       );
@@ -303,12 +329,12 @@ class EditSemanticDataDictionaryForm extends FormBase {
       *      CODES
       */
 
-      $form['codes_title'] = [
+      $form['dict_wrapper']['codes_title'] = [
         '#type' => 'markup',
         '#markup' => 'Codes',
       ];
 
-      $form['codes'] = array(
+      $form['dict_wrapper']['codes'] = array(
         '#type' => 'container',
         '#title' => $this->t('codes'),
         '#attributes' => array(
@@ -317,7 +343,7 @@ class EditSemanticDataDictionaryForm extends FormBase {
         ),
       );
 
-      $form['codes']['header'] = array(
+      $form['dict_wrapper']['codes']['header'] = array(
         '#type' => 'markup',
         '#markup' =>
           '<div class="p-2 col bg-secondary text-white border border-white">Column</div>' .
@@ -327,26 +353,26 @@ class EditSemanticDataDictionaryForm extends FormBase {
           '<div class="p-2 col-md-1 bg-secondary text-white border border-white">Operations</div>' . $separator,
       );
 
-      $form['codes']['rows'] = $this->renderCodeRows($codes);
+      $form['dict_wrapper']['codes']['rows'] = $this->renderCodeRows($codes, $display_mode);
 
-      $form['codes']['space_3'] = [
+      $form['dict_wrapper']['codes']['space_3'] = [
         '#type' => 'markup',
         '#markup' => $separator,
       ];
 
-      $form['codes']['actions']['top'] = array(
+      $form['dict_wrapper']['codes']['actions']['top'] = array(
         '#type' => 'markup',
         '#markup' => '<div class="p-3 col">',
       );
 
-      $form['codes']['actions']['add_row'] = [
+      $form['dict_wrapper']['codes']['actions']['add_row'] = [
         '#type' => 'submit',
         '#value' => $this->t('New Code'),
         '#name' => 'new_code',
         '#attributes' => array('class' => array('btn', 'btn-sm', 'add-element-button')),
       ];
 
-      $form['codes']['actions']['bottom'] = array(
+      $form['dict_wrapper']['codes']['actions']['bottom'] = array(
         '#type' => 'markup',
         '#markup' => '</div>' . $separator,
       );
@@ -384,25 +410,6 @@ class EditSemanticDataDictionaryForm extends FormBase {
     //$form['#attached']['library'][] = 'sem/sem_list';
 
     return $form;
-  }
-
-  public function validateForm(array &$form, FormStateInterface $form_state) {
-    $submitted_values = $form_state->cleanValues()->getValues();
-    $triggering_element = $form_state->getTriggeringElement();
-    $button_name = $triggering_element['#name'];
-
-    if ($button_name === 'save') {
-      // TODO
-      /*
-      $basic = \Drupal::state()->get('my_form_basic');
-      if(strlen($basic['name']) < 1) {
-        $form_state->setErrorByName(
-          'semantic_data_dictionary_name',
-          $this->t('Please enter a valid name for the Semantic Data Dictionary')
-        );
-      }
-      */
-    }
   }
 
   public function pills_card_callback(array &$form, FormStateInterface $form_state) {
@@ -480,169 +487,133 @@ class EditSemanticDataDictionaryForm extends FormBase {
    *
    ******************************/
 
-  protected function renderVariableRows(array $variables) {
-    $form_rows = [];
-    $separator = '<div class="w-100"></div>';
-    foreach ($variables as $delta => $variable) {
+  /**
+ * Render variable rows with Bootstrap structure and display-mode toggling.
+ *
+ * @param array  $variables
+ *   Each item: [
+ *     'column',
+ *     'attribute',
+ *     'is_attribute_of',
+ *     'unit',
+ *     'time',
+ *     'in_relation_to',
+ *     'was_derived_from',
+ *   ]
+ * @param string $mode
+ *   Display mode: 'prefix:label', 'just label', 'uri', 'prefix:uri'.
+ *
+ * @return array
+ *   Renderable rows.
+ */
+  protected function renderVariableRows(array $variables, string $mode): array {
+    $rows = [];
+    $sep  = '<div class="w-100"></div>';
 
-      $form_row = array(
-        'column' => array(
-          'top' => array(
-            '#type' => 'markup',
-            '#markup' => '<div class="pt-3 col border border-white">',
-          ),
-          'main' => array(
-            '#type' => 'textfield',
-            '#name' => 'variable_column_' . $delta,
-            '#value' => $variable['column'],
-          ),
-          'bottom' => array(
-            '#type' => 'markup',
-            '#markup' => '</div>',
-          ),
-        ),
+    foreach ($variables as $delta => $v) {
+      $display_attribute = $this->formatDisplay($v['attribute'], $v['column'], $mode);
+
+      $form_row = [
+        'column' => [
+          'top' => ['#type'=>'markup', '#markup'=>'<div class="pt-3 col border border-white">'],
+          'main' => ['#type'=>'textfield', '#name'=>"variable_column_$delta", '#value'=>$v['column'],],
+          'bottom' => ['#type'=>'markup', '#markup'=>'</div>'],
+        ],
         'attribute' => [
-          'top' => [
-            '#type' => 'markup',
-            '#markup' => '<div class="pt-3 col border border-white">',
-          ],
+          'top' => ['#type'=>'markup', '#markup'=>'<div class="pt-3 col border border-white">'],
           'main' => [
-            '#type' => 'textfield',
-            '#name' => 'variable_attribute_' . $delta,
-            '#value' => $variable['attribute'],
-            '#attributes' => [
-              'class' => ['open-tree-modal'],
-              'data-dialog-type' => 'modal',
-              'data-dialog-options' => json_encode(['width' => 800]),
-              'data-url' => Url::fromRoute('rep.tree_form', [
-                'mode' => 'modal',
-                'elementtype' => 'attribute',
-              ], ['query' => ['field_id' => 'variable_attribute_' . $delta]])->toString(),
-              'data-field-id' => 'variable_attribute_' . $delta,
-              'data-search-value' => $variable['attribute'],
-              'data-elementtype' => 'attribute',
+            '#type'=>'textfield',
+            '#name'=>"variable_attribute_$delta",
+            '#value'=>$display_attribute,
+            '#attributes'=>[
+              'data-original-value'=>$v['attribute'],
+              'data-label'=>$v['column'],
+              'class'=>['open-tree-modal'],
+              'data-dialog-type'=>'modal',
+              'data-dialog-options'=>json_encode(['width'=>800]),
+              'data-url'=>Url::fromRoute('rep.tree_form',['mode'=>'modal','elementtype'=>'attribute'],['query'=>['field_id'=>"variable_attribute_$delta"]])->toString(),
+              'data-field-id'=>"variable_attribute_$delta",
+              'data-search-value'=>$v['attribute'],
+              'data-elementtype'=>'attribute',
             ],
           ],
-          'bottom' => [
-            '#type' => 'markup',
-            '#markup' => '</div>',
-          ],
+          'bottom'=>['#type'=>'markup','#markup'=>'</div>'],
         ],
-        'is_attribute_of' => array(
-          'top' => array(
-            '#type' => 'markup',
-            '#markup' => '<div class="pt-3 col border border-white">',
-          ),
-          'main' => array(
-            '#type' => 'textfield',
-            '#name' => 'variable_is_attribute_of_' . $delta,
-            '#value' => $variable['is_attribute_of'],
-          ),
-          'bottom' => array(
-            '#type' => 'markup',
-            '#markup' => '</div>',
-          ),
-        ),
-        'unit' => [
-          'top' => [
-            '#type' => 'markup',
-            '#markup' => '<div class="pt-3 col border border-white">',
+        'is_attribute_of'=>[
+          'top'=>['#type'=>'markup','#markup'=>'<div class="pt-3 col border border-white">'],
+          'main'=>[
+            '#type'=>'textfield',
+            '#name'=>"variable_is_attribute_of_$delta",
+            '#value'=>$this->formatDisplay($v['is_attribute_of'], $v['column'], $mode),
+            '#attributes'=>['data-original-value'=>$v['is_attribute_of']],
           ],
-          'main' => [
-            '#type' => 'textfield',
-            '#name' => 'variable_unit_' . $delta,
-            '#value' => $variable['unit'],
-            '#attributes' => [
-              'class' => ['open-tree-modal'],
-              'data-dialog-type' => 'modal',
-              'data-dialog-options' => json_encode(['width' => 800]),
-              'data-url' => Url::fromRoute('rep.tree_form', [
-                'mode' => 'modal',
-                'elementtype' => 'unit',
-              ], ['query' => ['field_id' => 'variable_unit_' . $delta]])->toString(),
-              'data-field-id' => 'variable_unit_' . $delta,
-              'data-search-value' => $variable['unit'],
-              'data-elementtype' => 'unit',
+          'bottom'=>['#type'=>'markup','#markup'=>'</div>'],
+        ],
+        'unit'=>[
+          'top'=>['#type'=>'markup','#markup'=>'<div class="pt-3 col border border-white">'],
+          'main'=>[
+            '#type'=>'textfield',
+            '#name'=>"variable_unit_$delta",
+            '#value'=>$this->formatDisplay($v['unit'], $v['column'], $mode),
+            '#attributes'=>[
+              'data-original-value'=>$v['unit'],
+              'class'=>['open-tree-modal'],
+              'data-dialog-type'=>'modal',
+              'data-dialog-options'=>json_encode(['width'=>800]),
+              'data-url'=>Url::fromRoute('rep.tree_form',['mode'=>'modal','elementtype'=>'unit'],['query'=>['field_id'=>"variable_unit_$delta"]])->toString(),
+              'data-field-id'=>"variable_unit_$delta",
+              'data-search-value'=>$v['unit'],
+              'data-elementtype'=>'unit',
             ],
           ],
-          'bottom' => [
-            '#type' => 'markup',
-            '#markup' => '</div>',
-          ],
+          'bottom'=>['#type'=>'markup','#markup'=>'</div>'],
         ],
-        'time' => array(
-          'top' => array(
-            '#type' => 'markup',
-            '#markup' => '<div class="pt-3 col border border-white">',
-          ),
-          'main' => array(
-            '#type' => 'textfield',
-            '#name' => 'variable_time_' . $delta,
-            '#value' => $variable['time'],
-          ),
-          'bottom' => array(
-            '#type' => 'markup',
-            '#markup' => '</div>',
-          ),
-        ),
-        'in_relation_to' => array(
-          'top' => array(
-            '#type' => 'markup',
-            '#markup' => '<div class="pt-3 col border border-white">',
-          ),
-          'main' => array(
-            '#type' => 'textfield',
-            '#name' => 'variable_in_relation_to_' . $delta,
-            '#value' => $variable['in_relation_to'],
-          ),
-          'bottom' => array(
-            '#type' => 'markup',
-            '#markup' => '</div>',
-          ),
-        ),
-        'was_derived_from' => array(
-          'top' => array(
-            '#type' => 'markup',
-            '#markup' => '<div class="pt-3 col border border-white">',
-          ),
-          'main' => array(
-            '#type' => 'textfield',
-            '#name' => 'variable_was_derived_from_' . $delta,
-            '#value' => $variable['was_derived_from'],
-          ),
-          'bottom' => array(
-            '#type' => 'markup',
-            '#markup' => '</div>',
-          ),
-        ),
-        'operations' => array(
-          'top' => array(
-            '#type' => 'markup',
-            '#markup' => '<div class="pt-3 col-md-1 border border-white">',
-          ),
-          'main' => array(
-            '#type' => 'submit',
-            '#name' => 'variable_remove_' . $delta,
-            '#value' => $this->t('Remove'),
-            '#attributes' => array(
-              'class' => array('remove-row', 'btn', 'btn-sm', 'delete-element-button'),
-              'id' => 'variable-' . $delta,
-            ),
-          ),
-          'bottom' => array(
-            '#type' => 'markup',
-            '#markup' => '</div>' . $separator,
-          ),
-        ),
-      );
-
-      $rowId = 'row' . $delta;
-      $form_rows[] = [
-        $rowId => $form_row,
+        'time'=>[
+          'top'=>['#type'=>'markup','#markup'=>'<div class="pt-3 col border border-white">'],
+          'main'=>[
+            '#type'=>'textfield',
+            '#name'=>"variable_time_$delta",
+            '#value'=>$this->formatDisplay($v['time'], $v['column'], $mode),
+            '#attributes'=>['data-original-value'=>$v['time']],
+          ],
+          'bottom'=>['#type'=>'markup','#markup'=>'</div>'],
+        ],
+        'in_relation_to'=>[
+          'top'=>['#type'=>'markup','#markup'=>'<div class="pt-3 col border border-white">'],
+          'main'=>[
+            '#type'=>'textfield',
+            '#name'=>"variable_in_relation_to_$delta",
+            '#value'=>$this->formatDisplay($v['in_relation_to'], $v['column'], $mode),
+            '#attributes'=>['data-original-value'=>$v['in_relation_to']],
+          ],
+          'bottom'=>['#type'=>'markup','#markup'=>'</div>'],
+        ],
+        'was_derived_from'=>[
+          'top'=>['#type'=>'markup','#markup'=>'<div class="pt-3 col border border-white">'],
+          'main'=>[
+            '#type'=>'textfield',
+            '#name'=>"variable_was_derived_from_$delta",
+            '#value'=>$this->formatDisplay($v['was_derived_from'], $v['column'], $mode),
+            '#attributes'=>['data-original-value'=>$v['was_derived_from']],
+          ],
+          'bottom'=>['#type'=>'markup','#markup'=>'</div>'],
+        ],
+        'operations'=>[
+          'top'=>['#type'=>'markup','#markup'=>'<div class="pt-3 col-md-1 border border-white">'],
+          'main'=>[
+            '#type'=>'submit',
+            '#name'=>"variable_remove_$delta",
+            '#value'=>$this->t('Remove'),
+            '#attributes'=>['class'=>['remove-row','btn','btn-sm','delete-element-button'],'id'=>"variable-$delta"],
+          ],
+          'bottom'=>['#type'=>'markup','#markup'=>"</div>$sep"],
+        ],
       ];
 
+      $rows[] = [$delta => $form_row];
     }
-    return $form_rows;
+
+    return $rows;
   }
 
   protected function updateVariables(FormStateInterface $form_state) {
@@ -812,142 +783,113 @@ class EditSemanticDataDictionaryForm extends FormBase {
    *
    ******************************/
 
-  protected function renderObjectRows(array $objects) {
-    $form_rows = [];
-    $separator = '<div class="w-100"></div>';
-    foreach ($objects as $delta => $object) {
+  /**
+ * Render object rows with Bootstrap structure and display-mode toggling.
+ *
+ * @param array  $objects
+ *   Each item: [
+ *     'column',
+ *     'entity',
+ *     'role',
+ *     'relation',
+ *     'in_relation_to',
+ *     'was_derived_from',
+ *   ]
+ * @param string $mode
+ *   Display mode: 'prefix:label', 'just label', 'uri', 'prefix:uri'.
+ *
+ * @return array
+ *   Renderable rows.
+ */
+  protected function renderObjectRows(array $objects, string $mode): array {
+    $rows = [];
+    $sep  = '<div class="w-100"></div>';
 
-      $form_row = array(
-        'column' => array(
-          'top' => array(
-            '#type' => 'markup',
-            '#markup' => '<div class="pt-3 col border border-white">',
-          ),
-          'main' => array(
-            '#type' => 'textfield',
-            '#name' => 'object_column_' . $delta,
-            '#value' => $object['column'],
-          ),
-          'bottom' => array(
-            '#type' => 'markup',
-            '#markup' => '</div>',
-          ),
-        ),
+    foreach ($objects as $delta => $o) {
+      $display_entity = $this->formatDisplay($o['entity'], $o['column'], $mode);
+
+      $form_row = [
+        'column' => [
+          'top'    => ['#type'=>'markup', '#markup'=>'<div class="pt-3 col border border-white">'],
+          'main'   => ['#type'=>'textfield', '#name'=>"object_column_$delta", '#value'=>$o['column']],
+          'bottom' => ['#type'=>'markup', '#markup'=>'</div>'],
+        ],
         'entity' => [
-          'top' => [
-            '#type' => 'markup',
-            '#markup' => '<div class="pt-3 col border border-white">',
-          ],
-          'main' => [
+          'top'    => ['#type'=>'markup', '#markup'=>'<div class="pt-3 col border border-white">'],
+          'main'   => [
             '#type' => 'textfield',
-            '#name' => 'object_entity_' . $delta,
-            '#value' => $object['entity'],
+            '#name'  => "object_entity_$delta",
+            '#value' => $display_entity,
             '#attributes' => [
-              'class' => ['open-tree-modal'],
-              'data-dialog-type' => 'modal',
+              'data-original-value' => $o['entity'],
+              'data-label'          => $o['column'],
+              'class'               => ['open-tree-modal'],
+              'data-dialog-type'    => 'modal',
               'data-dialog-options' => json_encode(['width' => 800]),
-              'data-url' => Url::fromRoute('rep.tree_form', [
-                'mode' => 'modal',
-                'elementtype' => 'entity',
-              ], ['query' => ['field_id' => 'object_entity_' . $delta]])->toString(),
-              'data-field-id' => 'object_entity_' . $delta,
-              'data-search-value' => $object['entity'],
-              'data-elementtype' => 'entity',
+              'data-url'            => Url::fromRoute('rep.tree_form', [
+                                        'mode'        => 'modal',
+                                        'elementtype' => 'entity',
+                                      ], ['query' => ['field_id' => "object_entity_$delta"]])->toString(),
             ],
           ],
-          'bottom' => [
-            '#type' => 'markup',
-            '#markup' => '</div>',
-          ],
+          'bottom' => ['#type'=>'markup', '#markup'=>'</div>'],
         ],
-        'role' => array(
-          'top' => array(
-            '#type' => 'markup',
-            '#markup' => '<div class="pt-3 col border border-white">',
-          ),
-          'main' => array(
-            '#type' => 'textfield',
-            '#name' => 'object_role_' . $delta,
-            '#value' => $object['role'],
-          ),
-          'bottom' => array(
-            '#type' => 'markup',
-            '#markup' => '</div>',
-          ),
-        ),
-        'relation' => array(
-          'top' => array(
-            '#type' => 'markup',
-            '#markup' => '<div class="pt-3 col border border-white">',
-          ),
-          'main' => array(
-            '#type' => 'textfield',
-            '#name' => 'object_relation_' . $delta,
-            '#value' => $object['relation'],
-          ),
-          'bottom' => array(
-            '#type' => 'markup',
-            '#markup' => '</div>',
-          ),
-        ),
-        'in_relation_to' => array(
-          'top' => array(
-            '#type' => 'markup',
-            '#markup' => '<div class="pt-3 col border border-white">',
-          ),
-          'main' => array(
-            '#type' => 'textfield',
-            '#name' => 'object_in_relation_to_' . $delta,
-            '#value' => $object['in_relation_to'],
-          ),
-          'bottom' => array(
-            '#type' => 'markup',
-            '#markup' => '</div>',
-          ),
-        ),
-        'was_derived_from' => array(
-          'top' => array(
-            '#type' => 'markup',
-            '#markup' => '<div class="pt-3 col border border-white">',
-          ),
-          'main' => array(
-            '#type' => 'textfield',
-            '#name' => 'object_was_derived_from_' . $delta,
-            '#value' => $object['was_derived_from'],
-          ),
-          'bottom' => array(
-            '#type' => 'markup',
-            '#markup' => '</div>',
-          ),
-        ),
-        'operations' => array(
-          'top' => array(
-            '#type' => 'markup',
-            '#markup' => '<div class="pt-3 col-md-1 border border-white">',
-          ),
-          'main' => array(
+        'role' => [
+          'top'    => ['#type'=>'markup', '#markup'=>'<div class="pt-3 col border border-white">'],
+          'main'   => [
+            '#type'=>'textfield',
+            '#name'  => "object_role_$delta",
+            '#value' => $this->formatDisplay($o['role'], $o['column'], $mode),
+            '#attributes' => ['data-original-value' => $o['role']],
+          ],
+          'bottom' => ['#type'=>'markup', '#markup'=>'</div>'],
+        ],
+        'relation' => [
+          'top'    => ['#type'=>'markup', '#markup'=>'<div class="pt-3 col border border-white">'],
+          'main'   => [
+            '#type'=>'textfield',
+            '#name'  => "object_relation_$delta",
+            '#value' => $this->formatDisplay($o['relation'], $o['column'], $mode),
+            '#attributes' => ['data-original-value' => $o['relation']],
+          ],
+          'bottom' => ['#type'=>'markup', '#markup'=>'</div>'],
+        ],
+        'in_relation_to' => [
+          'top'    => ['#type'=>'markup', '#markup'=>'<div class="pt-3 col border border-white">'],
+          'main'   => [
+            '#type'=>'textfield',
+            '#name'  => "object_in_relation_to_$delta",
+            '#value' => $this->formatDisplay($o['in_relation_to'], $o['column'], $mode),
+            '#attributes' => ['data-original-value' => $o['in_relation_to']],
+          ],
+          'bottom' => ['#type'=>'markup', '#markup'=>'</div>'],
+        ],
+        'was_derived_from' => [
+          'top'    => ['#type'=>'markup', '#markup'=>'<div class="pt-3 col border border-white">'],
+          'main'   => [
+            '#type'=>'textfield',
+            '#name'  => "object_was_derived_from_$delta",
+            '#value' => $this->formatDisplay($o['was_derived_from'], $o['column'], $mode),
+            '#attributes' => ['data-original-value' => $o['was_derived_from']],
+          ],
+          'bottom' => ['#type'=>'markup', '#markup'=>'</div>'],
+        ],
+        'operations' => [
+          'top'    => ['#type'=>'markup', '#markup'=>'<div class="pt-3 col-md-1 border border-white">'],
+          'main'   => [
             '#type' => 'submit',
-            '#name' => 'object_remove_' . $delta,
+            '#name'  => "object_remove_$delta",
             '#value' => $this->t('Remove'),
-            '#attributes' => array(
-              'class' => array('remove-row', 'btn', 'btn-sm', 'delete-element-button'),
-              'id' => 'object-' . $delta,
-            ),
-          ),
-          'bottom' => array(
-            '#type' => 'markup',
-            '#markup' => '</div>' . $separator,
-          ),
-        ),
-      );
-
-      $rowId = 'row' . $delta;
-      $form_rows[] = [
-        $rowId => $form_row,
+            '#attributes' => ['class'=>['remove-row','btn','btn-sm','delete-element-button'],'id'=>"object-$delta"],
+          ],
+          'bottom' => ['#type'=>'markup', '#markup'=>"</div>$sep"],
+        ],
       ];
 
+      $rows[] = [$delta => $form_row];
     }
-    return $form_rows;
+
+    return $rows;
   }
 
   protected function updateObjects(FormStateInterface $form_state) {
@@ -1111,100 +1053,83 @@ class EditSemanticDataDictionaryForm extends FormBase {
    *
    ******************************/
 
-   protected function renderCodeRows(array $codes) {
-    $form_rows = [];
-    $separator = '<div class="w-100"></div>';
-    foreach ($codes as $delta => $code) {
+  /**
+ * Render codebook rows with Bootstrap structure and display-mode toggling.
+ *
+ * @param array  $codes
+ *   Each item: [
+ *     'column',
+ *     'code',
+ *     'label',
+ *     'class',
+ *   ]
+ * @param string $mode
+ *   Display mode: 'prefix:label', 'just label', 'uri', 'prefix:uri'.
+ *
+ * @return array
+ *   Renderable rows.
+ */
+  protected function renderCodeRows(array $codes, string $mode): array {
+    $rows = [];
+    $sep  = '<div class="w-100"></div>';
 
-      $form_row = array(
-        'column' => array(
-          'top' => array(
-            '#type' => 'markup',
-            '#markup' => '<div class="pt-3 col border border-white">',
-          ),
-          'main' => array(
-            '#type' => 'textfield',
-            '#name' => 'code_column_' . $delta,
-            '#default_value' => $code['column'],
-          ),
-          'bottom' => array(
-            '#type' => 'markup',
-            '#markup' => '</div>',
-          ),
-        ),
-        'code' => array(
-          'top' => array(
-            '#type' => 'markup',
-            '#markup' => '<div class="pt-3 col border border-white">',
-          ),
-          'main' => array(
-            '#type' => 'textfield',
-            '#name' => 'code_code_' . $delta,
-            '#default_value' => $code['code'],
-          ),
-          'bottom' => array(
-            '#type' => 'markup',
-            '#markup' => '</div>',
-          ),
-        ),
-        'label' => array(
-          'top' => array(
-            '#type' => 'markup',
-            '#markup' => '<div class="pt-3 col border border-white">',
-          ),
-          'main' => array(
-            '#type' => 'textfield',
-            '#name' => 'code_label_' . $delta,
-            '#default_value' => $code['label'],
-          ),
-          'bottom' => array(
-            '#type' => 'markup',
-            '#markup' => '</div>',
-          ),
-        ),
-        'class' => array(
-          'top' => array(
-            '#type' => 'markup',
-            '#markup' => '<div class="pt-3 col border border-white">',
-          ),
-          'main' => array(
-            '#type' => 'textfield',
-            '#name' => 'code_class_' . $delta,
-            '#default_value' => $code['class'],
-          ),
-          'bottom' => array(
-            '#type' => 'markup',
-            '#markup' => '</div>',
-          ),
-        ),
-        'operations' => array(
-          'top' => array(
-            '#type' => 'markup',
-            '#markup' => '<div class="pt-3 col-md-1 border border-white">',
-          ),
-          'main' => array(
+    foreach ($codes as $delta => $c) {
+      $display_code = $this->formatDisplay($c['code'], $c['label'], $mode);
+      $display_class= $this->formatDisplay($c['class'], $c['label'], $mode);
+
+      $form_row = [
+        'column' => [
+          'top'    => ['#type'=>'markup', '#markup'=>'<div class="pt-3 col border border-white">'],
+          'main'   => ['#type'=>'textfield', '#name'=>"code_column_$delta", '#default_value'=>$c['column']],
+          'bottom' => ['#type'=>'markup', '#markup'=>'</div>'],
+        ],
+        'code' => [
+          'top'    => ['#type'=>'markup', '#markup'=>'<div class="pt-3 col border border-white">'],
+          'main'   => [
+            '#type'=>'textfield',
+            '#name'  => "code_code_$delta",
+            '#value' => $display_code,
+            '#attributes'=>[
+              'data-original-value'=>$c['code'],
+              'data-label'=>$c['label'],
+            ],
+          ],
+          'bottom' => ['#type'=>'markup', '#markup'=>'</div>'],
+        ],
+        'label' => [
+          'top'    => ['#type'=>'markup', '#markup'=>'<div class="pt-3 col border border-white">'],
+          'main'   => ['#type'=>'textfield', '#name'=>"code_label_$delta", '#default_value'=>$c['label']],
+          'bottom' => ['#type'=>'markup', '#markup'=>'</div>'],
+        ],
+        'class' => [
+          'top'    => ['#type'=>'markup', '#markup'=>'<div class="pt-3 col border border-white">'],
+          'main'   => [
+            '#type'=>'textfield',
+            '#name'  => "code_class_$delta",
+            '#value' => $display_class,
+            '#attributes'=>[
+              'data-original-value'=>$c['class'],
+              'data-label'=>$c['label'],
+            ],
+          ],
+          'bottom' => ['#type'=>'markup', '#markup'=>'</div>'],
+        ],
+        'operations' => [
+          'top'    => ['#type'=>'markup', '#markup'=>'<div class="pt-3 col-md-1 border border-white">'],
+          'main'   => [
             '#type' => 'submit',
-            '#name' => 'code_remove_' . $delta,
+            '#name'  => "code_remove_$delta",
             '#value' => $this->t('Remove'),
-            '#attributes' => array(
-              'class' => array('remove-row', 'btn', 'btn-sm', 'delete-element-button'),
-              'id' => 'code-' . $delta,
-            ),
-          ),
-          'bottom' => array(
-            '#type' => 'markup',
-            '#markup' => '</div>' . $separator,
-          ),
-        ),
-      );
-
-      $rowId = 'row' . $delta;
-      $form_rows[] = [
-        $rowId => $form_row,
+            '#attributes'=>['class'=>['remove-row','btn','btn-sm','delete-element-button'],'id'=>"code-$delta"],
+          ],
+          'bottom' => ['#type'=>'markup', '#markup'=>"</div>$sep"],
+        ],
       ];
 
+      $rows[] = [$delta => $form_row];
     }
-    return $form_rows;
+
+    return $rows;
   }
 
   protected function updateCodes(FormStateInterface $form_state) {
@@ -1469,7 +1394,7 @@ class EditSemanticDataDictionaryForm extends FormBase {
   }
 
   /**
-   * Callback para abrir o modal com o formulário.
+   * Callback to open tree form.
    */
   public function openTreeModalCallback(array &$form, FormStateInterface $form_state) {
     $response = new AjaxResponse();
@@ -1488,7 +1413,6 @@ class EditSemanticDataDictionaryForm extends FormBase {
     return $response;
   }
 
-
   function backUrl() {
     $uid = \Drupal::currentUser()->id();
     $previousUrl = Utils::trackingGetPreviousUrl($uid, 'sem.edit_semantic_data_dictionary');
@@ -1496,6 +1420,65 @@ class EditSemanticDataDictionaryForm extends FormBase {
       $response = new RedirectResponse($previousUrl);
       $response->send();
       return;
+    }
+  }
+
+    /**
+   * AJAX callback for Display Mode changes.
+   *
+   * Returns the portion of the form inside #dict-wrapper.
+   */
+  public function displayModeAjaxCallback(array &$form, FormStateInterface $form_state) {
+    return $form['dict_wrapper'];
+  }
+
+  public function validateForm(array &$form, FormStateInterface $form_state) {
+    $submitted_values = $form_state->cleanValues()->getValues();
+    $triggering_element = $form_state->getTriggeringElement();
+    $button_name = $triggering_element['#name'];
+
+    if ($button_name === 'save') {
+      // TODO
+      /*
+      $basic = \Drupal::state()->get('my_form_basic');
+      if(strlen($basic['name']) < 1) {
+        $form_state->setErrorByName(
+          'semantic_data_dictionary_name',
+          $this->t('Please enter a valid name for the Semantic Data Dictionary')
+        );
+      }
+      */
+    }
+  }
+
+  /**
+   * Format a URI and its label according to the selected display mode.
+   *
+   * @param string $uri
+   *   The raw URI value.
+   * @param string $label
+   *   The human-readable label.
+   * @param string $mode
+   *   One of: 'prefix:label', 'just label', 'uri', 'prefix:uri'.
+   *
+   * @return string
+   *   The string to display in the textfield.
+   */
+  protected function formatDisplay(string $uri, string $label, string $mode): string {
+    // Extract prefix (everything before first colon).
+    $colon  = strpos($uri, ':');
+    $prefix = $colon !== FALSE ? substr($uri, 0, $colon) : '';
+
+    switch ($mode) {
+      case 'just label':
+        return $label;
+      case 'uri':
+        return $uri;
+      case 'prefix:uri':
+        return "{$prefix}:{$uri}";
+      case 'prefix:label':
+      default:
+        return "{$prefix}:{$label}";
     }
   }
 
