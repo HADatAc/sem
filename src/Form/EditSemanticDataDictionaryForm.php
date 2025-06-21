@@ -55,20 +55,36 @@ class EditSemanticDataDictionaryForm extends FormBase {
     $form['#attached']['library'][] = 'rep/rep_modal';
     $form['#attached']['library'][] = 'core/drupal.dialog';
 
-    // === Display Mode Selector ===
+    // Header com título à esquerda e select à direita
+    $form['header'] = [
+      '#type' => 'container',
+      '#attributes' => [
+        // (supondo Bootstrap 4/5)
+        'class' => ['d-flex', 'justify-content-between', 'align-items-center', 'mb-4'],
+      ],
+    ];
+
+    // Título
+    $form['header']['title'] = [
+      '#type'   => 'markup',
+      '#markup' => '<h3 class="mt-3 mb-5">' . $this->t('Edit Semantic Data Dictionary') . '</h3>',
+    ];
+
+    // Display Mode
     $display_mode = $form_state->getValue('display_mode', 'prefix:uri');
-    $form['display_mode'] = [
-      '#type' => 'select',
-      '#title' => $this->t('Display Mode'),
-      '#options' => [
+    $form['header']['display_mode'] = [
+      '#type'          => 'select',
+      '#title'         => $this->t('Display Mode'),
+      '#title_display' => 'invisible',    // esconde o <label> (já está implícito)
+      '#options'       => [
         'prefix:uri'   => $this->t('Prefix: URI'),
         'prefix:label' => $this->t('Prefix: Label'),
-        'just label'   => $this->t('Just Label'),
-        'uri'          => $this->t('URI'),
+        'label'        => $this->t('Just Label'),
       ],
       '#default_value' => $display_mode,
-      '#attributes' => [
-        'class' => ['col-md-6']
+      '#wrapper_attributes' => [
+        // se quiser limitar a largura
+        'style' => 'max-width: 200px;',
       ],
       '#ajax' => [
         'callback' => '::displayModeAjaxCallback',
@@ -115,11 +131,6 @@ class EditSemanticDataDictionaryForm extends FormBase {
 
     // SET SEPARATOR
     $separator = '<div class="w-100"></div>';
-
-    $form['semantic_data_dictionary_title'] = [
-      '#type' => 'markup',
-      '#markup' => '<h3 class="mt-5">Edit Semantic Data Dictionary</h3><br>',
-    ];
 
     $form['current_state'] = [
       '#type' => 'hidden',
@@ -514,7 +525,6 @@ class EditSemanticDataDictionaryForm extends FormBase {
     $sep  = '<div class="w-100"></div>';
 
     foreach ($variables as $delta => $v) {
-      $display_attribute = $this->formatDisplay($v['attribute'], $v['column'], $mode);
 
       $form_row = [
         'column' => [
@@ -527,7 +537,7 @@ class EditSemanticDataDictionaryForm extends FormBase {
           'main' => [
             '#type'=>'textfield',
             '#name'=>"variable_attribute_$delta",
-            '#value'=>$display_attribute,
+            '#value'=>$this->formatDisplay($v['attribute'], $mode),
             '#attributes'=>[
               'data-original-value'=>$v['attribute'],
               'data-label'=>$v['column'],
@@ -547,7 +557,7 @@ class EditSemanticDataDictionaryForm extends FormBase {
           'main'=>[
             '#type'=>'textfield',
             '#name'=>"variable_is_attribute_of_$delta",
-            '#value'=>$this->formatDisplay($v['is_attribute_of'], $v['column'], $mode),
+            '#value'=>$this->formatDisplay($v['is_attribute_of'], $mode),
             '#attributes'=>['data-original-value'=>$v['is_attribute_of']],
           ],
           'bottom'=>['#type'=>'markup','#markup'=>'</div>'],
@@ -557,7 +567,7 @@ class EditSemanticDataDictionaryForm extends FormBase {
           'main'=>[
             '#type'=>'textfield',
             '#name'=>"variable_unit_$delta",
-            '#value'=>$this->formatDisplay($v['unit'], $v['column'], $mode),
+            '#value'=>$this->formatDisplay($v['unit'], $mode),
             '#attributes'=>[
               'data-original-value'=>$v['unit'],
               'class'=>['open-tree-modal'],
@@ -586,7 +596,7 @@ class EditSemanticDataDictionaryForm extends FormBase {
           'main'=>[
             '#type'=>'textfield',
             '#name'=>"variable_in_relation_to_$delta",
-            '#value'=>$this->formatDisplay($v['in_relation_to'], $v['column'], $mode),
+            '#value'=>$this->formatDisplay($v['in_relation_to'], $mode),
             '#attributes'=>['data-original-value'=>$v['in_relation_to']],
           ],
           'bottom'=>['#type'=>'markup','#markup'=>'</div>'],
@@ -596,7 +606,7 @@ class EditSemanticDataDictionaryForm extends FormBase {
           'main'=>[
             '#type'=>'textfield',
             '#name'=>"variable_was_derived_from_$delta",
-            '#value'=>$this->formatDisplay($v['was_derived_from'], $v['column'], $mode),
+            '#value'=>$this->formatDisplay($v['was_derived_from'], $mode),
             '#attributes'=>['data-original-value'=>$v['was_derived_from']],
           ],
           'bottom'=>['#type'=>'markup','#markup'=>'</div>'],
@@ -809,7 +819,7 @@ class EditSemanticDataDictionaryForm extends FormBase {
     $sep  = '<div class="w-100"></div>';
 
     foreach ($objects as $delta => $o) {
-      $display_entity = $this->formatDisplay($o['entity'], $o['column'], $mode);
+      $display_entity = $this->formatDisplay($o['entity'], $mode);
 
       $form_row = [
         'column' => [
@@ -842,7 +852,7 @@ class EditSemanticDataDictionaryForm extends FormBase {
           'main'   => [
             '#type'=>'textfield',
             '#name'  => "object_role_$delta",
-            '#value' => $this->formatDisplay($o['role'], $o['column'], $mode),
+            '#value' => $this->formatDisplay($o['role'], $mode),
             '#attributes' => ['data-original-value' => $o['role']],
           ],
           'bottom' => ['#type'=>'markup', '#markup'=>'</div>'],
@@ -852,7 +862,7 @@ class EditSemanticDataDictionaryForm extends FormBase {
           'main'   => [
             '#type'=>'textfield',
             '#name'  => "object_relation_$delta",
-            '#value' => $this->formatDisplay($o['relation'], $o['column'], $mode),
+            '#value' => $this->formatDisplay($o['relation'], $mode),
             '#attributes' => ['data-original-value' => $o['relation']],
           ],
           'bottom' => ['#type'=>'markup', '#markup'=>'</div>'],
@@ -862,7 +872,7 @@ class EditSemanticDataDictionaryForm extends FormBase {
           'main'   => [
             '#type'=>'textfield',
             '#name'  => "object_in_relation_to_$delta",
-            '#value' => $this->formatDisplay($o['in_relation_to'], $o['column'], $mode),
+            '#value' => $this->formatDisplay($o['in_relation_to'], $mode),
             '#attributes' => ['data-original-value' => $o['in_relation_to']],
           ],
           'bottom' => ['#type'=>'markup', '#markup'=>'</div>'],
@@ -872,7 +882,7 @@ class EditSemanticDataDictionaryForm extends FormBase {
           'main'   => [
             '#type'=>'textfield',
             '#name'  => "object_was_derived_from_$delta",
-            '#value' => $this->formatDisplay($o['was_derived_from'], $o['column'], $mode),
+            '#value' => $this->formatDisplay($o['was_derived_from'], $mode),
             '#attributes' => ['data-original-value' => $o['was_derived_from']],
           ],
           'bottom' => ['#type'=>'markup', '#markup'=>'</div>'],
@@ -1077,8 +1087,8 @@ class EditSemanticDataDictionaryForm extends FormBase {
     $sep  = '<div class="w-100"></div>';
 
     foreach ($codes as $delta => $c) {
-      $display_code = $this->formatDisplay($c['code'], $c['label'], $mode);
-      $display_class= $this->formatDisplay($c['class'], $c['label'], $mode);
+      $display_code = $this->formatDisplay($c['code'], $mode);
+      $display_class= $this->formatDisplay($c['class'], $mode);
 
       $form_row = [
         'column' => [
@@ -1467,21 +1477,27 @@ class EditSemanticDataDictionaryForm extends FormBase {
    * @return string
    *   The string to display in the textfield.
    */
-  protected function formatDisplay(string $uri, string $label, string $mode): string {
-    // Extract prefix (everything before first colon).
-    $colon  = strpos($uri, ':');
-    $prefix = $colon !== FALSE ? substr($uri, 0, $colon) : '';
+  protected function formatDisplay(string $uri, string $mode): string {
 
-    switch ($mode) {
-      case 'just label':
-        return $label;
-      case 'uri':
-        return $uri;
-      case 'prefix:uri':
-        return "{$prefix}:{$uri}";
-      case 'prefix:label':
-      default:
-        return "{$prefix}:{$label}";
+    if (empty($uri) || substr($uri, 0, 2) === "??") return '';
+
+    // GET VALUES
+    $full_uri = Utils::plainUri($uri);
+    $api = \Drupal::service('rep.api_connector');
+    $values = $api->parseObjectResponse($api->getUri($full_uri),'getUri');
+
+    if (!empty($values)) {
+      switch ($mode) {
+        case 'label':
+          return $values->label;
+        case 'prefix:label':
+          return $values->uriNamespace;
+        case 'prefix:uri':
+        default:
+          return $uri;
+      }
+    } else {
+      return $uri;
     }
   }
 
