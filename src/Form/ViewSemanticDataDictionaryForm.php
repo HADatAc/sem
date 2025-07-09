@@ -243,7 +243,24 @@ class ViewSemanticDataDictionaryForm extends FormBase {
 
     $uid = \Drupal::currentUser()->id();
     $previousUrl = Utils::trackingGetPreviousUrl($uid, 'std.manage_study_elements');
-    if ($previousUrl) {
+    if (!$previousUrl) {
+      return;
+    }
+
+    if (strpos($previousUrl, '/std/stream-data-ajax') !== FALSE) {
+      $parts = parse_url($previousUrl);
+      if (!empty($parts['query'])) {
+        parse_str($parts['query'], $query);
+        if (!empty($query['studyUri'])) {
+          $form_state->setRedirect(
+            'std.manage_study_elements',
+            ['studyuri' => $query['studyUri']]
+          );
+          return;
+        }
+      }
+    }
+    else {
       $response = new RedirectResponse($previousUrl);
       $response->send();
       return;
