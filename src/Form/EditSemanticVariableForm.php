@@ -54,6 +54,8 @@ class EditSemanticVariableForm extends FormBase {
       $this->setSemanticVariable($svar);
     }
 
+    // dpm($this->getSemanticVariable(), 'Semantic Variable');
+
     $form['semantic_variable_name'] = [
       '#type' => 'textfield',
       '#title' => $this->t('Name'),
