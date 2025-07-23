@@ -411,9 +411,7 @@ class SEMSelectForm extends FormBase {
 
       $header_text = '';
 
-      // Definir a URL da imagem, usar placeholder se não houver imagem no item
-      dpm($item);
-      $image_uri = Utils::getAPIImage($item['element_uri'], $item['element_image'], UTILS::placeholderImage($item['element_hascotypeuri'],'semanticvariable', '/'));
+      $image_uri = Utils::getAPIImage($item['element_uri'], $item['element_image'], UTILS::placeholderImage($item['element_hascotypeuri'],$this->element_type, '/'));
 
       foreach ($header as $column_key => $column_label) {
         if ($column_label == 'Name') {
