@@ -140,7 +140,8 @@ class SEMSelectForm extends FormBase {
         $this->single_class_name = "Semantic Data Dictionary";
         $this->plural_class_name = "Semantic Data Dictionary";
         $header = SemanticDataDictionary::generateHeader();
-        $output = $outputCard = SemanticDataDictionary::generateOutput($this->getList());
+        $output = SemanticDataDictionary::generateOutput($this->getList());
+        $outputCard = SemanticDataDictionary::generateCardOutput($this->getList());
         break;
       case "sdd":
         $this->single_class_name = "SDD";
@@ -411,6 +412,7 @@ class SEMSelectForm extends FormBase {
       $header_text = '';
 
       // Definir a URL da imagem, usar placeholder se não houver imagem no item
+      dpm($item);
       $image_uri = Utils::getAPIImage($item['element_uri'], $item['element_image'], UTILS::placeholderImage($item['element_hascotypeuri'],'semanticvariable', '/'));
 
       foreach ($header as $column_key => $column_label) {
