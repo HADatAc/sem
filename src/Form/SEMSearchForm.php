@@ -169,5 +169,4 @@ class SEMSearchForm extends FormBase {
     $url = $this->redirectUrl($form_state);
     $form_state->setRedirectUrl($url);
   }
-
 }
