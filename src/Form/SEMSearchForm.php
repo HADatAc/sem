@@ -82,7 +82,7 @@ class SEMSearchForm extends FormBase {
 
     $element_types = [
       'datadictionary' => ['label' => 'DD', 'image' => 'datadictionary_placeholder.png'],
-      'semanticdatadictionary' => ['label' => 'SDD', 'image' => 'ssemanticdatadictionary_placeholder.png'],
+      'semanticdatadictionary' => ['label' => 'SDD', 'image' => 'semanticdatadictionary_placeholder.png'],
       'semanticvariable' => ['label' => 'SV', 'image' => 'semanticvariable_placeholder.png'],
       'entity' => ['label' => 'Entity', 'image' => 'entity_placeholder.png'],
       'attribute' => ['label' => 'Attribute', 'image' => 'attribute_placeholder.png'],
