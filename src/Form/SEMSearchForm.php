@@ -69,7 +69,6 @@ class SEMSearchForm extends FormBase {
       $this->setPageSize((int)$pathElements[6]);
     }
 
-    // === GRELHA DE ÍCONES ===
     $form['element_icons'] = [
       '#type' => 'container',
       '#attributes' => ['class' => ['element-icons-grid-wrapper']],
