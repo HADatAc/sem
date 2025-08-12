@@ -88,7 +88,7 @@ class SEMSearchForm extends FormBase {
       'unit' => ['label' => 'Unit', 'image' => 'unit_placeholder.png'],
     ];
 
-    $module_path = \Drupal::request()->getBaseUrl() . '/' . \Drupal::service('extension.list.module')->getPath('sem');
+    $module_path = \Drupal::request()->getBaseUrl() . '/' . \Drupal::service('extension.list.module')->getPath('rep');
 
     foreach ($element_types as $type => $info) {
       $placeholder_image = $module_path . '/images/placeholders/' . $info['image'];
