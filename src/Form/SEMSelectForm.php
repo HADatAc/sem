@@ -134,18 +134,20 @@ class SEMSelectForm extends FormBase {
         $this->plural_class_name = "Semantic Variables";
         $header = SemanticVariable::generateHeader();
         $output = SemanticVariable::generateOutput($this->getList());
+        $outputCard = SemanticVariable::generateCardOutput($this->getList());
         break;
       case "semanticdatadictionary":
         $this->single_class_name = "Semantic Data Dictionary";
         $this->plural_class_name = "Semantic Data Dictionary";
         $header = SemanticDataDictionary::generateHeader();
         $output = SemanticDataDictionary::generateOutput($this->getList());
+        $outputCard = SemanticDataDictionary::generateCardOutput($this->getList());
         break;
       case "sdd":
         $this->single_class_name = "SDD";
         $this->plural_class_name = "SDDs";
         $header = SDD::generateHeader();
-        $output = SDD::generateOutput($this->getList());
+        $output = $outputCard = SDD::generateOutput($this->getList());
         break;
       default:
         $this->single_class_name = "Object of Unknown Type";
@@ -272,7 +274,7 @@ class SEMSelectForm extends FormBase {
         ],
       ];
     } elseif ($view_type == 'card') {
-      $this->buildCardView($form, $form_state, $header, $output);
+      $this->buildCardView($form, $form_state, $header, $outputCard);
 
       // SHOW "Load More" BUTTON
       // TOTAL ITEMS
@@ -379,9 +381,6 @@ class SEMSelectForm extends FormBase {
       '#attributes' => ['id' => 'element-cards-wrapper'],
     ];
 
-    // IMAGE PLACEHOLDER
-    $placeholder_image = base_path() . \Drupal::service('extension.list.module')->getPath('rep') . '/images/semVar_placeholder.png';
-
     $cards_output = $form_state->get('cards_output');
     if ($cards_output === NULL) {
         $cards_output = [];
@@ -412,8 +411,7 @@ class SEMSelectForm extends FormBase {
 
       $header_text = '';
 
-      // Definir a URL da imagem, usar placeholder se não houver imagem no item
-      $image_uri = !empty($item['image']) ? $item['image'] : $placeholder_image;
+      $image_uri = Utils::getAPIImage($item['element_uri'], $item['element_image'], UTILS::placeholderImage($item['element_hascotypeuri'],$this->element_type, '/'));
 
       foreach ($header as $column_key => $column_label) {
         if ($column_label == 'Name') {
@@ -437,8 +435,8 @@ class SEMSelectForm extends FormBase {
       $form['element_cards_wrapper']['element_cards'][$sanitized_key]['card']['content'] = [
         '#type' => 'container',
         '#attributes' => [
-          'class' => ['card-body'],
-          'style' => 'display: flex; flex-direction: row; margin-bottom: 0!important;',
+          'class' => ['row', 'card-body', 'd-flex', 'flex-row'],
+          'style' => 'margin-bottom: 0!important;',
         ],
         'left_column' => [
           '#type' => 'container',
