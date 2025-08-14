@@ -94,7 +94,7 @@ class SEMSelectForm extends FormBase {
     $form['#attached']['library'][] = 'core/drupalSettings';
     $form['#attached']['library'][] = 'sem/sem_js_css';
 
-    $form['#attached']['drupalSettings']['sem_select_form']['base_url'] = \Drupal::request()->getSchemeAndHttpHost() . base_path();
+    $form['#attached']['drupalSettings']['sem_select_form']['base_url'] = (\Drupal::request()->headers->get('x-forwarded-proto') === 'https' ? 'https://':'http://'). \Drupal::request()->getHost() . \Drupal::request()->getBaseUrl();
     $form['#attached']['drupalSettings']['sem_select_form']['elementtype'] = $elementtype;
 
     // Get value `pagesize` (default 9)
