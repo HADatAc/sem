@@ -80,12 +80,12 @@ class SEMSearchForm extends FormBase {
     ];
 
     $element_types = [
-      'datadictionary' => ['label' => 'DD', 'image' => 'datadictionary_placeholder.png'],
-      'semanticdatadictionary' => ['label' => 'SDD', 'image' => 'semanticdatadictionary_placeholder.png'],
-      'semanticvariable' => ['label' => 'SV', 'image' => 'semanticvariable_placeholder.png'],
-      'entity' => ['label' => 'Entity', 'image' => 'entity_placeholder.png'],
-      'attribute' => ['label' => 'Attribute', 'image' => 'attribute_placeholder.png'],
-      'unit' => ['label' => 'Unit', 'image' => 'unit_placeholder.png'],
+      'datadictionary' => ['label' => 'DD', 'image' => 'white/datadictionary_placeholder.png'],
+      'semanticdatadictionary' => ['label' => 'SDD', 'image' => 'white/semanticdatadictionary_placeholder.png'],
+      'semanticvariable' => ['label' => 'SV', 'image' => 'white/semanticvariable_placeholder.png'],
+      'entity' => ['label' => 'Entity', 'image' => 'white/entity_placeholder.png'],
+      'attribute' => ['label' => 'Attribute', 'image' => 'white/attribute_placeholder.png'],
+      'unit' => ['label' => 'Unit', 'image' => 'white/unit_placeholder.png'],
     ];
 
     $module_path = \Drupal::request()->getBaseUrl() . '/' . \Drupal::service('extension.list.module')->getPath('rep');
