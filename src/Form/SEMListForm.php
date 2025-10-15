@@ -7,6 +7,8 @@ use Drupal\Core\Form\FormStateInterface;
 use Drupal\rep\ListKeywordPage;
 use Drupal\sem\Entity\Attribute;
 use Drupal\sem\Entity\Entity;
+use Drupal\sem\Entity\SDD;
+use Drupal\sem\Entity\SemanticDataDictionary;
 use Drupal\sem\Entity\SemanticVariable;
 use Drupal\sem\Entity\Unit;
 
@@ -28,7 +30,7 @@ class SEMListForm extends FormBase {
   }
 
   public function setList($list) {
-    return $this->list = $list; 
+    return $this->list = $list;
   }
 
   public function getListSize() {
@@ -36,7 +38,7 @@ class SEMListForm extends FormBase {
   }
 
   public function setListSize($list_size) {
-    return $this->list_size = $list_size; 
+    return $this->list_size = $list_size;
   }
 
   /**
@@ -51,7 +53,7 @@ class SEMListForm extends FormBase {
     }
     if (gettype($this->list_size) == 'string') {
       $total_pages = "0";
-    } else { 
+    } else {
       if ($this->list_size % $pagesize == 0) {
         $total_pages = $this->list_size / $pagesize;
       } else {
@@ -78,47 +80,73 @@ class SEMListForm extends FormBase {
 
     $class_name = "";
     $header = array();
-    $output = array();    
+    $output = array();
     switch ($elementtype) {
+
+      // DD
+      case "datadictionary":
+        $class_name = "Data Dictionaries";
+        $header = SemanticDataDictionary::generateHeader();
+        $output = SemanticDataDictionary::generateOutput($this->getList());
+        break;
+
+      // SDD
+      case "semanticdatadictionary":
+        $class_name = "Semantic Data Dictionaries";
+        $header = SDD::generateHeader();
+        $output = SDD::generateOutput($this->getList());
+        break;
 
       // ATTRIBUTE
       case "attribute":
         $class_name = "Attributes";
         $header = Attribute::generateHeader();
-        $output = Attribute::generateOutput($this->getList());    
+        $output = Attribute::generateOutput($this->getList());
         break;
-  
+
       // ENTITY
       case "entity":
         $class_name = "Entities";
         $header = Entity::generateHeader();
-        $output = Entity::generateOutput($this->getList());    
+        $output = Entity::generateOutput($this->getList());
         break;
 
       // SEMANTIC VARIABLE
       case "semanticvariable":
         $class_name = "Semantic Variables";
         $header = SemanticVariable::generateHeader();
-        $output = SemanticVariable::generateOutput($this->getList());    
+        $output = SemanticVariable::generateOutput($this->getList());
         break;
 
       // UNIT
       case "unit":
         $class_name = "Units";
         $header = Unit::generateHeader();
-        $output = Unit::generateOutput($this->getList());    
+        $output = Unit::generateOutput($this->getList());
         break;
 
       default:
         $class_name = "Objects of Unknown Types";
     }
 
+    $form['header'] = [
+      '#type' => 'container',
+      '#attributes' => [
+        'class' => ['header-container'],
+        'style' => 'display: flex; justify-content: space-between; align-items: center;',
+      ],
+    ];
+    $form['header']['title'] = [
+      '#type' => 'item',
+      '#markup' => t('<h3>Available <font style="color:DarkGreen;">' . $class_name . '</font></h3>'),
+    ];
+
     // PUT FORM TOGETHER
     $form['element_table'] = [
       '#type' => 'table',
       '#header' => $header,
       '#rows' => $output,
-      '#empty' => t('No response options found'),
+      '#empty' => t('No results found'),
     ];
 
     $form['pager'] = [
@@ -140,7 +168,7 @@ class SEMListForm extends FormBase {
 
   /**
    * {@inheritdoc}
-   */   
+   */
   public function submitForm(array &$form, FormStateInterface $form_state) {
   }
 
