@@ -128,7 +128,7 @@ class EditSemanticDataDictionaryForm extends FormBase {
     // SAVE STATE
     $this->setState($state);
 
-    kint($variables, 'variables');
+    // kint($variables, 'variables');
     // SET SEPARATOR
     $separator = '<div class="w-100"></div>';
 
