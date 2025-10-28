@@ -128,6 +128,7 @@ class EditSemanticDataDictionaryForm extends FormBase {
     // SAVE STATE
     $this->setState($state);
 
+    kint($variables, 'variables');
     // SET SEPARATOR
     $separator = '<div class="w-100"></div>';
 
@@ -566,26 +567,6 @@ class EditSemanticDataDictionaryForm extends FormBase {
             '#markup' => '</div>',
           ],
         ],
-        // 'attribute' => [
-        //   'top' => ['#type'=>'markup', '#markup'=>'<div class="pt-3 col border border-white">'],
-        //   'main' => [
-        //     '#type'=>'textfield',
-        //     '#name'=>"variable_attribute_$delta",
-        //     '#value'=>$this->formatDisplay($v['attribute'], $mode),
-        //     '#attributes'=>[
-        //       'data-original-value'=>$v['attribute'],
-        //       'data-label'=>$v['column'],
-        //       'class'=>['open-tree-modal'],
-        //       'data-dialog-type'=>'modal',
-        //       'data-dialog-options'=>json_encode(['width'=>800]),
-        //       'data-url'=>Url::fromRoute('rep.tree_form',['mode'=>'modal','elementtype'=>'attribute'],['query'=>['field_id'=>"variable_attribute_$delta"]])->toString(),
-        //       'data-field-id'=>"variable_attribute_$delta",
-        //       'data-search-value'=>$v['attribute'],
-        //       'data-elementtype'=>'attribute',
-        //     ],
-        //   ],
-        //   'bottom'=>['#type'=>'markup','#markup'=>'</div>'],
-        // ],
         'is_attribute_of' => [
           'top' => [
             '#type' => 'markup',
@@ -1826,28 +1807,46 @@ class EditSemanticDataDictionaryForm extends FormBase {
    * @return string
    *   The string to display in the textfield.
    */
+  // protected function formatDisplay(string $uri, string $mode = 'prefix:uri'): string {
+
+  //   if (empty($uri) || substr($uri, 0, 2) === "??") return '';
+
+  //   // GET VALUES
+  //   $full_uri = Utils::plainUri($uri);
+  //   $api = \Drupal::service('rep.api_connector');
+  //   $values = $api->parseObjectResponse($api->getUri($full_uri),'getUri');
+
+  //   if (!empty($values)) {
+  //     switch ($mode) {
+  //       case 'label':
+  //         return $values->label;
+  //       case 'prefix:label':
+  //         return $values->uriNamespace;
+  //       case 'prefix:uri':
+  //       default:
+  //         return $uri;
+  //     }
+  //   } else {
+  //     return $uri;
+  //   }
+  // }
   protected function formatDisplay(string $uri, string $mode = 'prefix:uri'): string {
-
-    if (empty($uri) || substr($uri, 0, 2) === "??") return '';
-
-    // GET VALUES
+    if ($uri === '') return '';
+    if (str_starts_with($uri, '??')) return $uri; // não ocultar placeholders
     $full_uri = Utils::plainUri($uri);
     $api = \Drupal::service('rep.api_connector');
-    $values = $api->parseObjectResponse($api->getUri($full_uri),'getUri');
+    $values = $api->parseObjectResponse($api->getUri($full_uri), 'getUri');
 
     if (!empty($values)) {
       switch ($mode) {
-        case 'label':
-          return $values->label;
-        case 'prefix:label':
-          return $values->uriNamespace;
+        case 'label':         return $values->label;
+        case 'prefix:label':  return $values->uriNamespace;
         case 'prefix:uri':
-        default:
-          return $uri;
+        default:              return $uri;
       }
-    } else {
-      return $uri;
     }
+    return $uri;
   }
+
 
 }
