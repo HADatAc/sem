@@ -604,6 +604,41 @@ class EditSemanticDataDictionaryForm extends FormBase {
             '#markup' => '</div>',
           ],
         ],
+        // 'unit' => [
+        //   'top' => [
+        //     '#type' => 'markup',
+        //     '#markup' => '<div class="pt-3 col border border-white">',
+        //   ],
+        //   'main' => [
+        //     '#type' => 'textfield',
+        //     '#name' => 'variable_unit_' . $delta,
+        //     '#id' => 'variable_unit_' . $delta,
+        //     '#default_value' => $this->formatDisplay($v['unit'], $mode),
+        //     '#attributes' => [
+        //       'class' => ['open-tree-modal'],
+        //       'data-dialog-type' => 'modal',
+        //       'data-dialog-options' => json_encode(['width' => 800]),
+        //       'data-url' => Url::fromRoute('rep.tree_form', [
+        //         'mode' => 'modal',
+        //         'elementtype' => 'unit',
+        //         'silent' => true,
+        //         'prefix' => true,
+        //       ], [
+        //         'query' => [
+        //           'field_id'     => 'variable_unit_' . $delta,
+        //           'search_value' => UTILS::plainUri($this->formatDisplay($v['unit'], 'plain:label')),
+        //         ],
+        //       ])->toString(),
+        //       'data-field-id'    => 'variable_unit_' . $delta,
+        //       'data-search-value'=> $v['unit'],
+        //       'data-elementtype' => 'unit',
+        //     ],
+        //   ],
+        //   'bottom' => [
+        //     '#type' => 'markup',
+        //     '#markup' => '</div>',
+        //   ],
+        // ],
         'unit' => [
           'top' => [
             '#type' => 'markup',
@@ -612,27 +647,8 @@ class EditSemanticDataDictionaryForm extends FormBase {
           'main' => [
             '#type' => 'textfield',
             '#name' => 'variable_unit_' . $delta,
-            '#id' => 'variable_unit_' . $delta,
-            '#default_value' => $this->formatDisplay($v['unit'], $mode),
-            '#attributes' => [
-              'class' => ['open-tree-modal'],
-              'data-dialog-type' => 'modal',
-              'data-dialog-options' => json_encode(['width' => 800]),
-              'data-url' => Url::fromRoute('rep.tree_form', [
-                'mode' => 'modal',
-                'elementtype' => 'unit',
-                'silent' => true,
-                'prefix' => true,
-              ], [
-                'query' => [
-                  'field_id'     => 'variable_unit_' . $delta,
-                  'search_value' => UTILS::plainUri($this->formatDisplay($v['unit'], 'plain:label')),
-                ],
-              ])->toString(),
-              'data-field-id'    => 'variable_unit_' . $delta,
-              'data-search-value'=> $v['unit'],
-              'data-elementtype' => 'unit',
-            ],
+            '#default_value' => $v['unit'],
+            '#autocomplete_route_name' => 'sem.semanticvariable_unit_autocomplete',
           ],
           'bottom' => [
             '#type' => 'markup',
