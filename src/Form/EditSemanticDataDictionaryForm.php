@@ -14,6 +14,8 @@ use Drupal\rep\Utils;
 use Drupal\rep\Entity\Tables;
 use Drupal\rep\Vocabulary\HASCO;
 use Drupal\rep\Vocabulary\REPGUI;
+use Drupal\Core\Ajax\OpenModalDialogCommand;
+
 
 class EditSemanticDataDictionaryForm extends FormBase {
 
@@ -529,7 +531,7 @@ class EditSemanticDataDictionaryForm extends FormBase {
       $form_row = [
         'column' => [
           'top' => ['#type'=>'markup', '#markup'=>'<div class="pt-3 col border border-white">'],
-          'main' => ['#type'=>'textfield', '#name'=>"variable_column_$delta", '#value'=>$v['column'],],
+          'main' => ['#type'=>'textfield', '#name'=>"variable_column_$delta", '#default_value'=>$v['column'],],
           'bottom' => ['#type'=>'markup', '#markup'=>'</div>'],
         ],
         'attribute' => [
@@ -541,7 +543,7 @@ class EditSemanticDataDictionaryForm extends FormBase {
             '#type' => 'textfield',
             '#name' => 'variable_attribute_' . $delta,
             '#id' => 'variable_attribute_' . $delta,
-            '#value' => $this->formatDisplay($v['attribute'], $mode),
+            '#default_value' => $this->formatDisplay($v['attribute'], $mode),
             '#attributes' => [
               'class' => ['open-tree-modal'],
               'data-dialog-type' => 'modal',
@@ -576,7 +578,7 @@ class EditSemanticDataDictionaryForm extends FormBase {
             '#type' => 'textfield',
             '#name' => 'variable_is_attribute_of_' . $delta,
             '#id' => 'variable_is_attribute_of_' . $delta,
-            '#value' => $this->formatDisplay($v['is_attribute_of'], $mode),
+            '#default_value' => $this->formatDisplay($v['is_attribute_of'], $mode),
             '#attributes' => [
               'class' => ['open-tree-modal'],
               'data-dialog-type' => 'modal',
@@ -611,7 +613,7 @@ class EditSemanticDataDictionaryForm extends FormBase {
             '#type' => 'textfield',
             '#name' => 'variable_unit_' . $delta,
             '#id' => 'variable_unit_' . $delta,
-            '#value' => $this->formatDisplay($v['unit'], $mode),
+            '#default_value' => $this->formatDisplay($v['unit'], $mode),
             '#attributes' => [
               'class' => ['open-tree-modal'],
               'data-dialog-type' => 'modal',
@@ -642,7 +644,7 @@ class EditSemanticDataDictionaryForm extends FormBase {
           'main'=>[
             '#type'=>'textfield',
             '#name'=>"variable_time_$delta",
-            '#value'=>$this->formatDisplay($v['time'], $v['column'], $mode),
+            '#default_value' => $this->formatDisplay($v['time'], $mode),
             '#attributes'=>['data-original-value'=>$v['time']],
           ],
           'bottom'=>['#type'=>'markup','#markup'=>'</div>'],
@@ -656,7 +658,7 @@ class EditSemanticDataDictionaryForm extends FormBase {
             '#type' => 'textfield',
             '#name' => 'variable_in_relation_to_' . $delta,
             '#id' => 'variable_in_relation_to_' . $delta,
-            '#value' => $this->formatDisplay($v['in_relation_to'], $mode),
+            '#default_value' => $this->formatDisplay($v['in_relation_to'], $mode),
             '#attributes' => [
               'class' => ['open-tree-modal'],
               'data-dialog-type' => 'modal',
@@ -691,7 +693,7 @@ class EditSemanticDataDictionaryForm extends FormBase {
             '#type' => 'textfield',
             '#name' => 'variable_was_derived_from_' . $delta,
             '#id' => 'variable_was_derived_from_' . $delta,
-            '#value' => $this->formatDisplay($v['was_derived_from'], $mode),
+            '#default_value' => $this->formatDisplay($v['was_derived_from'], $mode),
             '#attributes' => [
               'class' => ['open-tree-modal'],
               'data-dialog-type' => 'modal',
@@ -942,7 +944,7 @@ class EditSemanticDataDictionaryForm extends FormBase {
             '#type' => 'textfield',
             '#name' => 'object_entity_' . $delta,
             '#id' => 'object_entity_' . $delta,
-            '#value' => $this->formatDisplay($o['entity'], $mode),
+            '#default_value' => $this->formatDisplay($o['entity'], $mode),
             '#attributes' => [
               'class' => ['open-tree-modal'],
               'data-dialog-type' => 'modal',
@@ -977,7 +979,7 @@ class EditSemanticDataDictionaryForm extends FormBase {
             '#type' => 'textfield',
             '#name' => 'object_role_' . $delta,
             '#id' => 'object_role_' . $delta,
-            '#value' => $this->formatDisplay($o['person'], $mode),
+            '#default_value' => $this->formatDisplay($o['role'], $mode),
             '#attributes' => [
               'class' => ['open-tree-modal'],
               'data-dialog-type' => 'modal',
@@ -994,7 +996,7 @@ class EditSemanticDataDictionaryForm extends FormBase {
                 ],
               ])->toString(),
               'data-field-id'    => 'object_role_' . $delta,
-              'data-search-value'=> $o['person'],
+              'data-search-value'=> $o['role'],
               'data-elementtype' => 'person',
             ],
           ],
@@ -1012,7 +1014,7 @@ class EditSemanticDataDictionaryForm extends FormBase {
             '#type' => 'textfield',
             '#name' => 'object_relation_' . $delta,
             '#id' => 'object_relation_' . $delta,
-            '#value' => $this->formatDisplay($o['relation'], $mode),
+            '#default_value' => $this->formatDisplay($o['relation'], $mode),
             '#attributes' => [
               'class' => ['open-tree-modal'],
               'data-dialog-type' => 'modal',
@@ -1047,7 +1049,7 @@ class EditSemanticDataDictionaryForm extends FormBase {
             '#type' => 'textfield',
             '#name' => 'object_in_relation_to_' . $delta,
             '#id' => 'object_in_relation_to_' . $delta,
-            '#value' => $this->formatDisplay($o['in_relation_to'], $mode),
+            '#default_value' => $this->formatDisplay($o['in_relation_to'], $mode),
             '#attributes' => [
               'class' => ['open-tree-modal'],
               'data-dialog-type' => 'modal',
@@ -1082,7 +1084,7 @@ class EditSemanticDataDictionaryForm extends FormBase {
             '#type' => 'textfield',
             '#name' => 'object_was_derived_from_' . $delta,
             '#id' => 'object_was_derived_from_' . $delta,
-            '#value' => $this->formatDisplay($o['was_derived_from'], $mode),
+            '#default_value' => $this->formatDisplay($o['was_derived_from'], $mode),
             '#attributes' => [
               'class' => ['open-tree-modal'],
               'data-dialog-type' => 'modal',
@@ -1698,46 +1700,35 @@ class EditSemanticDataDictionaryForm extends FormBase {
    * @return string
    *   The string to display in the textfield.
    */
-  // protected function formatDisplay(string $uri, string $mode = 'prefix:uri'): string {
+  protected function formatDisplay(?string $uri, string $mode = 'prefix:uri'): string {
+    // Guard clauses for null and empty
+    if ($uri === null || $uri === '') {
+      return '';
+    }
+    // Keep placeholders (e.g., "??") visible to the user
+    if (str_starts_with($uri, '??')) {
+      return $uri;
+    }
 
-  //   if (empty($uri) || substr($uri, 0, 2) === "??") return '';
-
-  //   // GET VALUES
-  //   $full_uri = Utils::plainUri($uri);
-  //   $api = \Drupal::service('rep.api_connector');
-  //   $values = $api->parseObjectResponse($api->getUri($full_uri),'getUri');
-
-  //   if (!empty($values)) {
-  //     switch ($mode) {
-  //       case 'label':
-  //         return $values->label;
-  //       case 'prefix:label':
-  //         return $values->uriNamespace;
-  //       case 'prefix:uri':
-  //       default:
-  //         return $uri;
-  //     }
-  //   } else {
-  //     return $uri;
-  //   }
-  // }
-  protected function formatDisplay(string $uri, string $mode = 'prefix:uri'): string {
-    if ($uri === '') return '';
-    if (str_starts_with($uri, '??')) return $uri; // não ocultar placeholders
+    // Normalize full URI and resolve metadata
     $full_uri = Utils::plainUri($uri);
     $api = \Drupal::service('rep.api_connector');
     $values = $api->parseObjectResponse($api->getUri($full_uri), 'getUri');
 
     if (!empty($values)) {
       switch ($mode) {
-        case 'label':         return $values->label;
-        case 'prefix:label':  return $values->uriNamespace;
+        case 'label':
+          return $values->label ?? '';
+        case 'prefix:label':
+          return $values->uriNamespace ?? '';
         case 'prefix:uri':
-        default:              return $uri;
+        default:
+          return $uri;
       }
     }
     return $uri;
   }
+
 
 
 }
