@@ -82,7 +82,7 @@ class JsonApiUnitController extends ControllerBase{
     if (!empty($obj->isSuccessful) && !empty($obj->body)) {
       foreach ($obj->body as $unit) {
         $label = $unit->label ?? '';
-        $description = $unit->description != '' ? $unit->description : 'Olá';
+        $description = $unit->description != '' ? $unit->description : '';
         $uri = $unit->uri ?? '';
 
         // Value used in the textfield (compatible with Utils::uriFromAutocomplete()).
