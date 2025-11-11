@@ -84,7 +84,13 @@ class EditSemanticVariableForm extends FormBase {
       '#title' => $this->t('Unit (optional)'),
       '#default_value' => Utils::fieldToAutocomplete($this->getSemanticVariable()->unitUri,$this->getSemanticVariable()->unitLabel),
       '#autocomplete_route_name' => 'sem.semanticvariable_unit_autocomplete',
+      '#attributes' => [
+        'class' => ['sem-unit-autocomplete'],
+      ],
+      '#suffix' => '<div class="sem-unit-description description" style="margin-top:4px; color:#666; display:none;"></div>',
     ];
+    $form['#attached']['library'][] = 'sem/sem_unit_description';
+
     $form['semantic_variable_time'] = [
       '#type' => 'textfield',
       '#title' => $this->t('Time Restriction (optional)'),

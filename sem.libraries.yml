@@ -21,3 +21,14 @@ sem_search_icons:
   css:
     theme:
       css/sem_search_icons.css: {}
+
+sem_unit_description:
+  css:
+    theme:
+      css/sem.css: {}
+  js:
+    js/sem.unit.description.js: {}
+  dependencies:
+    - core/jquery
+    - core/drupal
+    - core/drupal.autocomplete
