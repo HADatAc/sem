@@ -6,6 +6,7 @@ use Drupal\Core\Controller\ControllerBase;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Drupal\Component\Utility\Xss;
+use Drupal\rep\Utils;
 
 /**
  * Class JsonApiEntityController
@@ -32,7 +33,7 @@ class JsonApiEntityController extends ControllerBase{
     }
     foreach ($entities as $entity) {
       $results[] = [
-        'value' => $entity->label . ' [' . $entity->uri . ']',
+        'value' => Utils::trimPreserveBracket(Utils::fieldToAutocomplete($entity->uri, $entity->label), 127),
         'label' => $entity->label,
       ];
     }
