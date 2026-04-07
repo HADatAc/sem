@@ -8,7 +8,10 @@ use Drupal\Core\Url;
 use Drupal\Component\Serialization\Json;
 use Drupal\file\Entity\File;
 use Drupal\rep\ListManagerEmailPage;
+use Drupal\rep\ListKeywordLanguagePage;
 use Drupal\rep\Utils;
+use Drupal\rep\Entity\Tables;
+use Drupal\rep\Vocabulary\VSTOI;
 use Drupal\sem\Entity\SDD;
 use Drupal\sem\Entity\SemanticDataDictionary;
 use Drupal\sem\Entity\SemanticVariable;
@@ -64,26 +67,49 @@ class SEMSelectForm extends FormBase {
     $this->manager_name = $user->name->value;
 
 
-    // GET TOTAL NUMBER OF ELEMENTS AND TOTAL NUMBER OF PAGES
     $this->element_type = $elementtype;
-    $this->setListSize(-1);
-    if ($this->element_type != NULL) {
-      $this->setListSize(ListManagerEmailPage::total($this->element_type, $this->manager_email));
-    }
-    if (gettype($this->list_size) == 'string') {
-      $total_pages = "0";
-    } else {
-      if ($this->list_size % $pagesize == 0) {
-        $total_pages = $this->list_size / $pagesize;
-      } else {
-        $total_pages = floor($this->list_size / $pagesize) + 1;
-      }
-    }
+    $page = $page ?? 1;
+    $pagesize = $pagesize ?? 9;
 
-    // Retrieve or set default view type
+    // Retrieve or set default view type + filters
     $session = \Drupal::request()->getSession();
     $view_type = $session->get('sem_select_view_type', 'table');
     $form_state->set('view_type', $view_type);
+    $table_active_class = ($view_type === 'table') ? ['selected-button'] : [];
+    $card_active_class = ($view_type === 'card') ? ['selected-button'] : [];
+
+    if ($view_type === 'card') {
+      $form['#attached']['library'][] = 'rep/infinitescroll';
+    }
+
+    $status_filter_key = 'sem_select_status_filter.' . (string) $this->element_type;
+    $status_filter = $form_state->getValue('status_filter');
+    if ($status_filter === NULL) {
+      $status_filter = $session->get($status_filter_key, '_');
+    }
+    else {
+      $session->set($status_filter_key, $status_filter);
+    }
+
+    $supports_keywordlanguage = in_array($this->element_type, ['semanticvariable'], TRUE);
+    $text_filter_key = 'sem_select_text_filter.' . (string) $this->element_type;
+    $language_filter_key = 'sem_select_language_filter.' . (string) $this->element_type;
+
+    $text_filter = $form_state->getValue('text_filter');
+    if ($text_filter === NULL) {
+      $text_filter = $session->get($text_filter_key, '');
+    }
+    else {
+      $session->set($text_filter_key, $text_filter);
+    }
+
+    $language_filter = $form_state->getValue('language_filter');
+    if ($language_filter === NULL) {
+      $language_filter = $session->get($language_filter_key, '_');
+    }
+    else {
+      $session->set($language_filter_key, $language_filter);
+    }
 
     // Attach necessary libraries
     $form['#attached']['library'][] = 'core/drupal.bootstrap';
@@ -97,13 +123,49 @@ class SEMSelectForm extends FormBase {
     $form['#attached']['drupalSettings']['sem_select_form']['base_url'] = (\Drupal::request()->headers->get('x-forwarded-proto') === 'https' ? 'https://':'http://'). \Drupal::request()->getHost() . \Drupal::request()->getBaseUrl();
     $form['#attached']['drupalSettings']['sem_select_form']['elementtype'] = $elementtype;
 
-    // Get value `pagesize` (default 9)
-    if ($form_state->get('page_size')) {
-      $pagesize = $form_state->get('page_size');
-    } else {
-      $pagesize = $session->get('sir_select_form_pagesize', 9);
-      $form_state->set('page_size', $pagesize);
+    // Get value `pagesize` (default 9) - only override for CARD view.
+    if ($view_type == 'card') {
+      if ($form_state->get('page_size')) {
+        $pagesize = $form_state->get('page_size');
+      }
+      else {
+        $pagesize = $session->get('sem_select_form_pagesize', 9);
+        $form_state->set('page_size', $pagesize);
+      }
     }
+
+    $has_status_filter = !($status_filter === '_' || $status_filter === NULL || $status_filter === '');
+    $has_text_filter = $supports_keywordlanguage && (trim((string) $text_filter) !== '');
+    $has_language_filter = $supports_keywordlanguage && !($language_filter === '_' || $language_filter === NULL || $language_filter === '');
+    $use_keywordlanguage = $supports_keywordlanguage && ($has_text_filter || $has_language_filter || $has_status_filter);
+
+    // GET TOTAL NUMBER OF ELEMENTS AND TOTAL NUMBER OF PAGES
+    $this->setListSize(-1);
+    if ($this->element_type != NULL) {
+      if ($use_keywordlanguage) {
+        $keyword_param = $has_text_filter ? trim((string) $text_filter) : '_';
+        $lang_param = $has_language_filter ? (string) $language_filter : '_';
+        $status_param = $has_status_filter ? (string) $status_filter : '_';
+        $this->setListSize(ListKeywordLanguagePage::total($this->element_type, $keyword_param, $lang_param, '_', $this->manager_email, $status_param));
+      }
+      elseif ($has_status_filter) {
+        $this->setListSize(ListManagerEmailPage::totalByStatusManagerEmail($this->element_type, $status_filter, $this->manager_email, FALSE));
+      }
+      else {
+        $this->setListSize(ListManagerEmailPage::total($this->element_type, $this->manager_email));
+      }
+    }
+
+    $total_pages = 1;
+    if (is_numeric($this->list_size) && $pagesize > 0) {
+      $size = (int) $this->list_size;
+      if ($size > 0) {
+        $total_pages = (int) ceil($size / $pagesize);
+      }
+    }
+
+    // Clamp current page
+    $page = max(1, min((int) $page, (int) $total_pages));
 
     // CREATE LINK FOR NEXT PAGE AND PREVIOUS PAGE
     if ($page < $total_pages) {
@@ -120,7 +182,18 @@ class SEMSelectForm extends FormBase {
     }
 
     // RETRIEVE ELEMENTS
-    $this->setList(ListManagerEmailPage::exec($this->element_type, $this->manager_email, $page, $pagesize));
+    if ($use_keywordlanguage) {
+      $keyword_param = $has_text_filter ? trim((string) $text_filter) : '_';
+      $lang_param = $has_language_filter ? (string) $language_filter : '_';
+      $status_param = $has_status_filter ? (string) $status_filter : '_';
+      $this->setList(ListKeywordLanguagePage::exec($this->element_type, $keyword_param, $lang_param, '_', $this->manager_email, $status_param, $page, $pagesize));
+    }
+    elseif ($has_status_filter) {
+      $this->setList(ListManagerEmailPage::execByStatusManagerEmail($this->element_type, $status_filter, $this->manager_email, FALSE, $page, $pagesize));
+    }
+    else {
+      $this->setList(ListManagerEmailPage::exec($this->element_type, $this->manager_email, $page, $pagesize));
+    }
 
     //dpm($this->getList()[0]->dataFile);
 
@@ -164,39 +237,23 @@ class SEMSelectForm extends FormBase {
       '#title' => $this->t('<h4>' . $this->plural_class_name . ' maintained by <font color="DarkGreen">' . $this->manager_name . ' (' . $this->manager_email . ')</font></h4>'),
     ];
 
-    // Adicionar botões de alternância de visualização
-    $form['view_toggle'] = [
+    // Controls row: action buttons (left) + view toggle and filters (right).
+    $form['controls_row'] = [
       '#type' => 'container',
-      '#attributes' => ['class' => ['view-toggle', 'd-flex', 'justify-content-end']],
-    ];
-
-    $form['view_toggle']['table_view'] = [
-      '#type' => 'submit',
-      '#value' => '',
-      '#name' => 'view_table',
       '#attributes' => [
-        'style' => 'padding: 20px;',
-        'class' => ['table-view-button', 'fa-xl', 'mx-1'],
-        'title' => $this->t('Tabel View'),
+        'class' => ['d-flex', 'justify-content-between', 'align-items-start', 'flex-wrap', 'gap-2', 'mb-0'],
+        'style' => 'margin-bottom:0!important;',
       ],
-      '#submit' => ['::viewTableSubmit'],
-      '#limit_validation_errors' => [],
     ];
 
-    $form['view_toggle']['card_view'] = [
-      '#type' => 'submit',
-      '#value' => '',
-      '#name' => 'view_card',
+    $form['controls_row']['buttons_container'] = [
+      '#type' => 'container',
       '#attributes' => [
-        'style' => 'padding: 20px;',
-        'class' => ['card-view-button', 'fa-xl'],
-        'title' => $this->t('Card View'),
+        'class' => ['d-flex', 'flex-wrap', 'gap-2'],
       ],
-      '#submit' => ['::viewCardSubmit'],
-      '#limit_validation_errors' => [],
     ];
 
-    $form['add_element'] = [
+    $form['controls_row']['buttons_container']['add_element'] = [
       '#type' => 'submit',
       '#value' => $this->t('Add New ' . $this->single_class_name),
       '#name' => 'add_element',
@@ -205,8 +262,46 @@ class SEMSelectForm extends FormBase {
       ],
     ];
 
+    $form['controls_row']['right_controls'] = [
+      '#type' => 'container',
+      '#attributes' => [
+        'class' => ['d-flex', 'flex-column', 'align-items-end', 'gap-2'],
+      ],
+    ];
+
+    $form['controls_row']['right_controls']['view_toggle'] = [
+      '#type' => 'container',
+      '#attributes' => ['class' => ['view-toggle', 'd-flex', 'justify-content-end']],
+    ];
+
+    $form['controls_row']['right_controls']['view_toggle']['table_view'] = [
+      '#type' => 'submit',
+      '#value' => '',
+      '#name' => 'view_table',
+      '#attributes' => [
+        'style' => 'padding: 20px;',
+        'class' => array_merge(['table-view-button', 'fa-xl', 'mx-1'], $table_active_class),
+        'title' => $this->t('Tabel View'),
+      ],
+      '#submit' => ['::viewTableSubmit'],
+      '#limit_validation_errors' => [],
+    ];
+
+    $form['controls_row']['right_controls']['view_toggle']['card_view'] = [
+      '#type' => 'submit',
+      '#value' => '',
+      '#name' => 'view_card',
+      '#attributes' => [
+        'style' => 'padding: 20px;',
+        'class' => array_merge(['card-view-button', 'fa-xl'], $card_active_class),
+        'title' => $this->t('Card View'),
+      ],
+      '#submit' => ['::viewCardSubmit'],
+      '#limit_validation_errors' => [],
+    ];
+
     if ($view_type == 'table') {
-      $form['edit_selected_element'] = [
+      $form['controls_row']['buttons_container']['edit_selected_element'] = [
         '#type' => 'submit',
         '#value' => $this->t('Edit Selected ' . $this->single_class_name),
         '#name' => 'edit_element',
@@ -214,7 +309,7 @@ class SEMSelectForm extends FormBase {
           'class' => ['btn', 'btn-primary', 'edit-element-button'],
         ],
       ];
-      $form['delete_selected_element'] = [
+      $form['controls_row']['buttons_container']['delete_selected_element'] = [
         '#type' => 'submit',
         '#value' => $this->t('Delete Selected ' . $this->plural_class_name),
         '#name' => 'delete_element',
@@ -222,8 +317,86 @@ class SEMSelectForm extends FormBase {
           'class' => ['btn', 'btn-primary', 'delete-element-button'],
         ],
       ];
+
+      // Filters (API-backed)
+      $status_options = [
+        '_' => $this->t('All Status'),
+        VSTOI::DRAFT => $this->t('Draft'),
+        VSTOI::UNDER_REVIEW => $this->t('Under Review'),
+        VSTOI::CURRENT => $this->t('Current'),
+        VSTOI::DEPRECATED => $this->t('Deprecated'),
+      ];
+
+      $form['controls_row']['right_controls']['filter_container'] = [
+        '#type' => 'container',
+        '#attributes' => [
+          'class' => ['d-flex', 'ms-auto', 'mb-0'],
+          'style' => 'margin-bottom:0!important;'
+        ],
+      ];
+
+      $form['controls_row']['right_controls']['filter_container']['filter_label'] = [
+        '#type' => 'label',
+        '#title' => $this->t('Filter(s): '),
+        '#attributes' => [
+          'class' => ['pt-3', 'me-2', 'fw-bold'],
+        ]
+      ];
+
+      if ($supports_keywordlanguage) {
+        $form['controls_row']['right_controls']['filter_container']['text_filter'] = [
+          '#type' => 'textfield',
+          '#default_value' => $text_filter,
+          '#ajax' => [
+            'callback' => '::ajaxReloadTable',
+            'wrapper' => 'element-table-wrapper',
+            'event' => 'change',
+          ],
+          '#attributes' => [
+            'class' => ['form-select', 'w-auto', 'mt-2', 'me-1'],
+            'style' => 'max-width:230px;margin-bottom:0!important;float:right;',
+            'placeholder' => 'Type in your search criteria',
+            'onkeydown' => 'if (event.keyCode == 13) { event.preventDefault(); this.blur(); }',
+          ],
+        ];
+
+        $tables = new Tables;
+        $languages = $tables->getLanguages();
+        if ($languages) {
+          $languages = ['_' => $this->t('All Languages')] + $languages;
+        }
+        $form['controls_row']['right_controls']['filter_container']['language_filter'] = [
+          '#type' => 'select',
+          '#options' => $languages,
+          '#default_value' => $language_filter,
+          '#ajax' => [
+            'callback' => '::ajaxReloadTable',
+            'wrapper' => 'element-table-wrapper',
+            'event' => 'change',
+          ],
+          '#attributes' => [
+            'class' => ['form-select', 'w-auto', 'mt-2', 'me-1'],
+            'style' => 'margin-bottom:0!important;float:right;'
+          ],
+        ];
+      }
+
+      $form['controls_row']['right_controls']['filter_container']['status_filter'] = [
+        '#type' => 'select',
+        '#options' => $status_options,
+        '#default_value' => $status_filter,
+        '#ajax' => [
+          'callback' => '::ajaxReloadTable',
+          'wrapper' => 'element-table-wrapper',
+          'event' => 'change',
+        ],
+        '#attributes' => [
+          'class' => ['form-select', 'w-auto', 'mt-2'],
+          'style' => 'margin-bottom:0!important;float:right;'
+        ],
+      ];
       if ($this->element_type == "sdd") {
-        $form['download_sdd'] = [
+        $form['controls_row']['buttons_container']['download_sdd'] = [
           '#type' => 'submit',
           '#value' => $this->t('Download Selected ' . $this->single_class_name),
           '#name' => 'download_sdd',
@@ -231,7 +404,7 @@ class SEMSelectForm extends FormBase {
             'class' => ['btn', 'btn-primary', 'download-button'],
           ],
         ];
-        $form['ingest_sdd'] = [
+        $form['controls_row']['buttons_container']['ingest_sdd'] = [
           '#type' => 'submit',
           '#value' => $this->t('Ingest Selected ' . $this->single_class_name),
           '#name' => 'ingest_sdd',
@@ -244,7 +417,7 @@ class SEMSelectForm extends FormBase {
           'class' => [],
         ],
         ];
-        $form['uningest_sdd'] = [
+        $form['controls_row']['buttons_container']['uningest_sdd'] = [
           '#type' => 'submit',
           '#value' => $this->t('Uningest Selected ' . $this->plural_class_name),
           '#name' => 'uningest_sdd',
@@ -253,14 +426,19 @@ class SEMSelectForm extends FormBase {
           ],
         ];
       }
-      $form['element_table'] = [
+      $form['element_table_wrapper'] = [
+        '#type' => 'container',
+        '#attributes' => ['id' => 'element-table-wrapper'],
+      ];
+
+      $form['element_table_wrapper']['element_table'] = [
         '#type' => 'tableselect',
         '#header' => $header,
         '#options' => $output,
         '#js_select' => FALSE,
         '#empty' => t('No ' . $this->plural_class_name . ' found'),
       ];
-      $form['pager'] = [
+      $form['element_table_wrapper']['pager'] = [
         '#theme' => 'list-page',
         '#items' => [
           'page' => strval($page),
@@ -274,7 +452,12 @@ class SEMSelectForm extends FormBase {
         ],
       ];
     } elseif ($view_type == 'card') {
-      $this->buildCardView($form, $form_state, $header, $outputCard);
+      $form['cards_lazy_wrapper'] = [
+        '#type' => 'container',
+        '#attributes' => ['id' => 'cards-lazy-wrapper'],
+      ];
+
+      $this->buildCardView($form['cards_lazy_wrapper'], $form_state, $header, $outputCard);
 
       // SHOW "Load More" BUTTON
       // TOTAL ITEMS
@@ -285,7 +468,7 @@ class SEMSelectForm extends FormBase {
 
       //Prevent infinite scroll without new data
       if ($total_items > $current_page_size) {
-        $form['load_more_button'] = [
+        $form['cards_lazy_wrapper']['load_more_button'] = [
           '#type' => 'submit',
           '#value' => $this->t('Load More'),
           '#name' => 'load_more_button',
@@ -295,10 +478,15 @@ class SEMSelectForm extends FormBase {
             'style' => 'display: none;',
           ],
           '#submit' => ['::loadMoreSubmit'],
+          '#ajax' => [
+            'callback' => '::ajaxReloadCards',
+            'wrapper' => 'cards-lazy-wrapper',
+            'event' => 'click',
+          ],
           '#limit_validation_errors' => [],
         ];
 
-        $form['list_state'] = [
+        $form['cards_lazy_wrapper']['list_state'] = [
           '#type' => 'hidden',
           '#value' => ($total_items > $current_page_size ? 1:0),
           "#name" => 'list_state',
@@ -323,6 +511,22 @@ class SEMSelectForm extends FormBase {
     ];
 
     return $form;
+  }
+
+  /**
+   * AJAX callback to reload list when filters change.
+   */
+  public function ajaxReloadTable(array &$form, FormStateInterface $form_state) {
+    $form_state->setRebuild(TRUE);
+    return $form['element_table_wrapper'];
+  }
+
+  /**
+   * AJAX callback to reload card view when loading more.
+   */
+  public function ajaxReloadCards(array &$form, FormStateInterface $form_state) {
+    $form_state->setRebuild(TRUE);
+    return $form['cards_lazy_wrapper'];
   }
 
   /**
@@ -381,22 +585,12 @@ class SEMSelectForm extends FormBase {
       '#attributes' => ['id' => 'element-cards-wrapper'],
     ];
 
-    $cards_output = $form_state->get('cards_output');
-    if ($cards_output === NULL) {
-        $cards_output = [];
-        $form_state->set('cards_output', $cards_output);
-    }
-
-    $cards_output = $form_state->get('cards_output');
-    $cards_output = array_merge($cards_output, $output);
-    $form_state->set('cards_output', $cards_output);
-
     $form['element_cards_wrapper']['element_cards'] = [
       '#type' => 'container',
       '#attributes' => ['class' => ['row', 'mt-3']],
     ];
 
-    foreach ($cards_output as $key => $item) {
+    foreach ($output as $key => $item) {
       $sanitized_key = md5($key);
 
       $form['element_cards_wrapper']['element_cards'][$sanitized_key] = [
