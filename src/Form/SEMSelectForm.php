@@ -9,6 +9,7 @@ use Drupal\Component\Serialization\Json;
 use Drupal\file\Entity\File;
 use Drupal\rep\ListManagerEmailPage;
 use Drupal\rep\ListKeywordLanguagePage;
+use Drupal\rep\ManageOwnerFilter;
 use Drupal\rep\Utils;
 use Drupal\rep\Entity\Tables;
 use Drupal\rep\Vocabulary\VSTOI;
@@ -111,6 +112,19 @@ class SEMSelectForm extends FormBase {
       $session->set($language_filter_key, $language_filter);
     }
 
+    $is_admin = ManageOwnerFilter::isAdmin();
+    $manager_filter_key = 'sem_select_manager_filter.' . (string) $this->element_type;
+    $manager_filter = $form_state->getValue('manager_filter');
+    if ($manager_filter === NULL) {
+      $manager_filter = $session->get($manager_filter_key, '');
+    }
+    else {
+      $manager_filter = ManageOwnerFilter::normalizeSelectedEmail($manager_filter);
+      $session->set($manager_filter_key, $manager_filter);
+    }
+
+    $effective_manager_email = ManageOwnerFilter::resolveEffectiveOwner($this->manager_email, $manager_filter, $status_filter);
+
     // Attach necessary libraries
     $form['#attached']['library'][] = 'core/drupal.bootstrap';
 
@@ -146,13 +160,13 @@ class SEMSelectForm extends FormBase {
         $keyword_param = $has_text_filter ? trim((string) $text_filter) : '_';
         $lang_param = $has_language_filter ? (string) $language_filter : '_';
         $status_param = $has_status_filter ? (string) $status_filter : '_';
-        $this->setListSize(ListKeywordLanguagePage::total($this->element_type, $keyword_param, $lang_param, '_', $this->manager_email, $status_param));
+        $this->setListSize(ListKeywordLanguagePage::total($this->element_type, $keyword_param, $lang_param, '_', $effective_manager_email, $status_param));
       }
       elseif ($has_status_filter) {
-        $this->setListSize(ListManagerEmailPage::totalByStatusManagerEmail($this->element_type, $status_filter, $this->manager_email, FALSE));
+        $this->setListSize(ListManagerEmailPage::totalByStatusManagerEmail($this->element_type, $status_filter, $effective_manager_email, FALSE));
       }
       else {
-        $this->setListSize(ListManagerEmailPage::total($this->element_type, $this->manager_email));
+        $this->setListSize(ListManagerEmailPage::total($this->element_type, $effective_manager_email));
       }
     }
 
@@ -186,13 +200,13 @@ class SEMSelectForm extends FormBase {
       $keyword_param = $has_text_filter ? trim((string) $text_filter) : '_';
       $lang_param = $has_language_filter ? (string) $language_filter : '_';
       $status_param = $has_status_filter ? (string) $status_filter : '_';
-      $this->setList(ListKeywordLanguagePage::exec($this->element_type, $keyword_param, $lang_param, '_', $this->manager_email, $status_param, $page, $pagesize));
+      $this->setList(ListKeywordLanguagePage::exec($this->element_type, $keyword_param, $lang_param, '_', $effective_manager_email, $status_param, $page, $pagesize));
     }
     elseif ($has_status_filter) {
-      $this->setList(ListManagerEmailPage::execByStatusManagerEmail($this->element_type, $status_filter, $this->manager_email, FALSE, $page, $pagesize));
+      $this->setList(ListManagerEmailPage::execByStatusManagerEmail($this->element_type, $status_filter, $effective_manager_email, FALSE, $page, $pagesize));
     }
     else {
-      $this->setList(ListManagerEmailPage::exec($this->element_type, $this->manager_email, $page, $pagesize));
+      $this->setList(ListManagerEmailPage::exec($this->element_type, $effective_manager_email, $page, $pagesize));
     }
 
     //dpm($this->getList()[0]->dataFile);
@@ -236,6 +250,16 @@ class SEMSelectForm extends FormBase {
       '#type' => 'item',
       '#title' => $this->t('<h4>' . $this->plural_class_name . ' maintained by <font color="DarkGreen">' . $this->manager_name . ' (' . $this->manager_email . ')</font></h4>'),
     ];
+
+    $show_owner_indicator = $is_admin && $manager_filter !== '' && strcasecmp($effective_manager_email, $manager_filter) === 0;
+    if ($show_owner_indicator) {
+      $form['owner_indicator'] = [
+        '#type' => 'item',
+        '#markup' => $this->t('<div class="alert alert-info py-2 mb-3"><strong>A visualizar owner:</strong> @owner</div>', [
+          '@owner' => $effective_manager_email,
+        ]),
+      ];
+    }
 
     // Controls row: action buttons (left) + view toggle and filters (right).
     $form['controls_row'] = [
@@ -378,6 +402,25 @@ class SEMSelectForm extends FormBase {
           '#attributes' => [
             'class' => ['form-select', 'w-auto', 'mt-2', 'me-1'],
             'style' => 'margin-bottom:0!important;float:right;'
+          ],
+        ];
+      }
+
+      if ($is_admin) {
+        $form['controls_row']['right_controls']['filter_container']['manager_filter'] = [
+          '#type' => 'textfield',
+          '#title' => $this->t('User'),
+          '#title_display' => 'invisible',
+          '#default_value' => $manager_filter,
+          '#ajax' => [
+            'callback' => '::ajaxReloadTable',
+            'wrapper' => 'element-table-wrapper',
+            'event' => 'change',
+          ],
+          '#attributes' => [
+            'class' => ['form-control', 'w-auto', 'mt-2', 'me-1'],
+            'style' => 'min-width:240px;margin-bottom:0!important;float:right;',
+            'placeholder' => $this->t('User email (Draft/Under Review)'),
           ],
         ];
       }
