@@ -5,6 +5,10 @@ namespace Drupal\sem\Form;
 use Drupal\Core\Form\FormBase;
 use Drupal\Core\Form\FormStateInterface;
 use Drupal\Core\Url;
+use Drupal\Core\Ajax\AjaxResponse;
+use Drupal\Core\Ajax\AppendCommand;
+use Drupal\Core\Ajax\InvokeCommand;
+use Drupal\Core\Ajax\ReplaceCommand;
 use Drupal\Component\Serialization\Json;
 use Drupal\file\Entity\File;
 use Drupal\rep\ListManagerEmailPage;
@@ -496,12 +500,117 @@ class SEMSelectForm extends FormBase {
         ],
       ];
     } elseif ($view_type == 'card') {
+      $status_options = [
+        '_' => $this->t('All Status'),
+        VSTOI::DRAFT => $this->t('Draft'),
+        VSTOI::UNDER_REVIEW => $this->t('Under Review'),
+        VSTOI::CURRENT => $this->t('Current'),
+        VSTOI::DEPRECATED => $this->t('Deprecated'),
+      ];
+
+      $form['controls_row']['right_controls']['filter_container'] = [
+        '#type' => 'container',
+        '#attributes' => [
+          'class' => ['d-flex', 'ms-auto', 'mb-0'],
+          'style' => 'margin-bottom:0!important;'
+        ],
+      ];
+
+      $form['controls_row']['right_controls']['filter_container']['filter_label'] = [
+        '#type' => 'label',
+        '#title' => $this->t('Filter(s): '),
+        '#attributes' => [
+          'class' => ['pt-3', 'me-2', 'fw-bold'],
+        ]
+      ];
+
+      if ($supports_keywordlanguage) {
+        $form['controls_row']['right_controls']['filter_container']['text_filter'] = [
+          '#type' => 'textfield',
+          '#default_value' => $text_filter,
+          '#ajax' => [
+            'callback' => '::ajaxReloadCards',
+            'wrapper' => 'cards-lazy-wrapper',
+            'event' => 'change',
+          ],
+          '#attributes' => [
+            'class' => ['form-select', 'w-auto', 'mt-2', 'me-1'],
+            'style' => 'max-width:230px;margin-bottom:0!important;float:right;',
+            'placeholder' => 'Type in your search criteria',
+            'onkeydown' => 'if (event.keyCode == 13) { event.preventDefault(); this.blur(); }',
+          ],
+        ];
+
+        $tables = new Tables;
+        $languages = $tables->getLanguages();
+        if ($languages) {
+          $languages = ['_' => $this->t('All Languages')] + $languages;
+        }
+        $form['controls_row']['right_controls']['filter_container']['language_filter'] = [
+          '#type' => 'select',
+          '#options' => $languages,
+          '#default_value' => $language_filter,
+          '#ajax' => [
+            'callback' => '::ajaxReloadCards',
+            'wrapper' => 'cards-lazy-wrapper',
+            'event' => 'change',
+          ],
+          '#attributes' => [
+            'class' => ['form-select', 'w-auto', 'mt-2', 'me-1'],
+            'style' => 'margin-bottom:0!important;float:right;'
+          ],
+        ];
+      }
+
+      if ($is_admin) {
+        $form['controls_row']['right_controls']['filter_container']['manager_filter'] = [
+          '#type' => 'textfield',
+          '#title' => $this->t('User'),
+          '#title_display' => 'invisible',
+          '#default_value' => $manager_filter,
+          '#ajax' => [
+            'callback' => '::ajaxReloadCards',
+            'wrapper' => 'cards-lazy-wrapper',
+            'event' => 'change',
+          ],
+          '#attributes' => [
+            'class' => ['form-control', 'w-auto', 'mt-2', 'me-1'],
+            'style' => 'min-width:240px;margin-bottom:0!important;float:right;',
+            'placeholder' => $this->t('User email (Draft/Under Review)'),
+          ],
+        ];
+      }
+
+      $form['controls_row']['right_controls']['filter_container']['status_filter'] = [
+        '#type' => 'select',
+        '#options' => $status_options,
+        '#default_value' => $status_filter,
+        '#ajax' => [
+          'callback' => '::ajaxReloadCards',
+          'wrapper' => 'cards-lazy-wrapper',
+          'event' => 'change',
+        ],
+        '#attributes' => [
+          'class' => ['form-select', 'w-auto', 'mt-2'],
+          'style' => 'margin-bottom:0!important;float:right;'
+        ],
+      ];
+
       $form['cards_lazy_wrapper'] = [
         '#type' => 'container',
         '#attributes' => ['id' => 'cards-lazy-wrapper'],
       ];
 
       $this->buildCardView($form['cards_lazy_wrapper'], $form_state, $header, $outputCard);
+
+      $form['cards_lazy_wrapper']['records_count'] = [
+        '#type' => 'item',
+        '#markup' => $this->t('<div id="count-cards" style="font-weight:bold; margin-top:10px; padding-right:2rem;">Currently viewing @count of @total @class</div>', [
+          '@count' => count($this->getList()),
+          '@total' => (int) $this->getListSize(),
+          '@class' => $this->plural_class_name,
+        ]),
+      ];
 
       // SHOW "Load More" BUTTON
       // TOTAL ITEMS
@@ -570,6 +679,65 @@ class SEMSelectForm extends FormBase {
    */
   public function ajaxReloadCards(array &$form, FormStateInterface $form_state) {
     $form_state->setRebuild(TRUE);
+
+    $triggering_element = $form_state->getTriggeringElement();
+    $trigger_name = (string) ($triggering_element['#name'] ?? '');
+
+    if ($trigger_name === 'load_more_button') {
+      $response = new AjaxResponse();
+
+      $previous = (int) ($form_state->get('previous_page_size') ?? 0);
+      $cards_container = $form['cards_lazy_wrapper']['element_cards_wrapper']['element_cards'] ?? [];
+
+      $card_keys = [];
+      if (is_array($cards_container)) {
+        foreach (array_keys($cards_container) as $key) {
+          if (is_string($key) && $key !== '' && $key[0] !== '#') {
+            $card_keys[] = $key;
+          }
+        }
+      }
+
+      $previous = max(0, min($previous, count($card_keys)));
+      $new_keys = array_slice($card_keys, $previous);
+      $append_build = [];
+      foreach ($new_keys as $k) {
+        $append_build[$k] = $cards_container[$k];
+      }
+
+      if (!empty($append_build)) {
+        $rendered = (string) \Drupal::service('renderer')->renderPlain($append_build);
+        if (trim($rendered) !== '') {
+          $response->addCommand(new AppendCommand('#element-cards-items', $rendered));
+        }
+      }
+
+      $loaded = count($card_keys);
+      $total = (int) ($this->getListSize() ?? 0);
+      $has_more = $total > $loaded;
+
+      $count_markup = '<div id="count-cards" style="font-weight:bold; margin-top:10px; padding-right:2rem;">'
+        . $this->t('Currently viewing @count of @total @class', [
+          '@count' => $loaded,
+          '@total' => $total,
+          '@class' => $this->plural_class_name,
+        ])
+        . '</div>';
+      $response->addCommand(new ReplaceCommand('#count-cards', $count_markup));
+
+      $response->addCommand(new InvokeCommand('#list_state', 'val', [$has_more ? 1 : 0]));
+      if (!$has_more) {
+        $response->addCommand(new InvokeCommand('#load-more-button', 'hide', []));
+      }
+
+      $response->addCommand(new InvokeCommand('html, body', 'animate', [
+        ['scrollTop' => 99999],
+        'slow',
+      ]));
+
+      return $response;
+    }
+
     return $form['cards_lazy_wrapper'];
   }
 
@@ -579,6 +747,7 @@ class SEMSelectForm extends FormBase {
   public function loadMoreSubmit(array &$form, FormStateInterface $form_state) {
     // Increments page number to load more cards
     $current_page_size = $form_state->get('page_size') ?? 9;
+    $form_state->set('previous_page_size', (int) $current_page_size);
     $new_page_size = $current_page_size + 9;
     $form_state->set('page_size', $new_page_size);
 
@@ -631,8 +800,24 @@ class SEMSelectForm extends FormBase {
 
     $form['element_cards_wrapper']['element_cards'] = [
       '#type' => 'container',
-      '#attributes' => ['class' => ['row', 'mt-3']],
+      '#attributes' => [
+        'id' => 'element-cards-items',
+        'class' => ['row', 'mt-3'],
+      ],
     ];
+
+    if (empty($output)) {
+      $form['element_cards_wrapper']['element_cards']['no_results'] = [
+        '#type' => 'container',
+        '#attributes' => ['class' => ['col-12']],
+        'message' => [
+          '#markup' => '<div class="alert alert-info mb-0">'
+            . $this->t('No @items found for the current filters.', ['@items' => $this->plural_class_name])
+            . '</div>',
+        ],
+      ];
+      return;
+    }
 
     foreach ($output as $key => $item) {
       $sanitized_key = md5($key);
