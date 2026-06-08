@@ -202,7 +202,17 @@ class AddSemanticVariableForm extends FormBase {
           '"hasSIRManagerEmail":"'.$useremail.'"}';
 
       $api = \Drupal::service('rep.api_connector');
-      $api->semanticVariableAdd($semanticVariableJSON);
+      $addResponse = $api->semanticVariableAdd($semanticVariableJSON);
+      $created = $api->parseObjectResponse($addResponse, 'semanticVariableAdd');
+      if ($created === NULL) {
+        throw new \RuntimeException('API rejected semantic variable creation payload.');
+      }
+
+      $verify = $api->parseObjectResponse($api->getUri($newSemanticVariableUri), 'getUri');
+      if ($verify === NULL) {
+        throw new \RuntimeException('Semantic variable was not persisted after create call.');
+      }
+
       \Drupal::messenger()->addMessage(t("Semantic Variable has been added successfully."));
       $form_state->setRedirectUrl(Utils::selectBackUrl('semanticvariable'));
 
