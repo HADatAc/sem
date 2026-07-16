@@ -6,6 +6,7 @@ use Drupal\Core\Controller\ControllerBase;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Drupal\Component\Utility\Xss;
+use Drupal\rep\Utils;
 
 /**
  * Class JsonApiAttributeController
@@ -32,7 +33,7 @@ class JsonApiAttributeController extends ControllerBase{
     }
     foreach ($attributes as $attribute) {
       $results[] = [
-        'value' => $attribute->label . ' [' . $attribute->uri . ']',
+        'value' => Utils::trimPreserveBracket(Utils::fieldToAutocomplete($attribute->uri, $attribute->label), 127),
         'label' => $attribute->label,
       ];
     }

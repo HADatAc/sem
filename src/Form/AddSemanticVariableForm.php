@@ -7,6 +7,7 @@ use Drupal\Core\Form\FormStateInterface;
 use Drupal\rep\Utils;
 use Drupal\rep\Vocabulary\HASCO;
 use Symfony\Component\HttpFoundation\RedirectResponse;
+use Drupal\Core\Url;
 
 class AddSemanticVariableForm extends FormBase {
 
@@ -21,15 +22,53 @@ class AddSemanticVariableForm extends FormBase {
    * {@inheritdoc}
    */
   public function buildForm(array $form, FormStateInterface $form_state) {
+
+    // MODAL
+    $form['#attached']['library'][] = 'rep/rep_modal';
+    $form['#attached']['library'][] = 'core/drupal.dialog';
+
     $form['semantic_variable_name'] = [
       '#type' => 'textfield',
       '#title' => $this->t('Name'),
+      '#wrapper_attributes' => [
+        'style' => "margin-bottom:0!important;",
+      ],
     ];
-    $form['semantic_variable_entity'] = [
-      '#type' => 'textfield',
-      '#title' => $this->t('Entity (required)'),
-      '#autocomplete_route_name' => 'sem.semanticvariable_entity_autocomplete',
+    // $form['semantic_variable_entity'] = [
+    //   '#type' => 'textfield',
+    //   '#title' => $this->t('Entity (required)'),
+    //   '#autocomplete_route_name' => 'sem.semanticvariable_entity_autocomplete',
 
+    // ];
+    $form['semantic_variable_entity'] = [
+      'top' => [
+        '#type' => 'markup',
+        '#markup' => '<div class="pt-3 col border border-white">',
+      ],
+      'main' => [
+        '#type' => 'textfield',
+        '#title' => $this->t('Entity'),
+        '#name' => 'semantic_variable_entity',
+        '#default_value' => '',
+        '#id' => 'semantic_variable_entity',
+        '#parents' => ['semantic_variable_entity'],
+        '#attributes' => [
+          'class' => ['open-tree-modal'],
+          'data-dialog-type' => 'modal',
+          'data-dialog-options' => json_encode(['width' => 800]),
+          'data-url' => Url::fromRoute('rep.tree_form', [
+            'mode' => 'modal',
+            'elementtype' => 'entity',
+          ], ['query' => ['field_id' => 'semantic_variable_entity']])->toString(),
+          'data-field-id' => 'semantic_variable_entity',
+          'data-elementtype' => 'entity',
+          'autocomplete' => 'off',
+        ],
+      ],
+      'bottom' => [
+        '#type' => 'markup',
+        '#markup' => '</div>',
+      ],
     ];
     $form['semantic_variable_attribute'] = [
       '#type' => 'textfield',
@@ -45,7 +84,14 @@ class AddSemanticVariableForm extends FormBase {
       '#type' => 'textfield',
       '#title' => $this->t('Unit (optional)'),
       '#autocomplete_route_name' => 'sem.semanticvariable_unit_autocomplete',
+      '#attributes' => [
+        'class' => ['sem-unit-autocomplete'],
+      ],
+      '#suffix' => '<div class="sem-unit-description description" style="margin-top:4px; color:#666; display:none;"></div>',
     ];
+
+    $form['#attached']['library'][] = 'sem/sem_unit_description';
+
     $form['semantic_variable_time'] = [
       '#type' => 'textfield',
       '#title' => $this->t('Time Restriction (optional)'),
@@ -156,7 +202,17 @@ class AddSemanticVariableForm extends FormBase {
           '"hasSIRManagerEmail":"'.$useremail.'"}';
 
       $api = \Drupal::service('rep.api_connector');
-      $api->semanticVariableAdd($semanticVariableJSON);
+      $addResponse = $api->semanticVariableAdd($semanticVariableJSON);
+      $created = $api->parseObjectResponse($addResponse, 'semanticVariableAdd');
+      if ($created === NULL) {
+        throw new \RuntimeException('API rejected semantic variable creation payload.');
+      }
+
+      $verify = $api->parseObjectResponse($api->getUri($newSemanticVariableUri), 'getUri');
+      if ($verify === NULL) {
+        throw new \RuntimeException('Semantic variable was not persisted after create call.');
+      }
+
       \Drupal::messenger()->addMessage(t("Semantic Variable has been added successfully."));
       $form_state->setRedirectUrl(Utils::selectBackUrl('semanticvariable'));
 

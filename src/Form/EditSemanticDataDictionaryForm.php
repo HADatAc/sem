@@ -14,6 +14,8 @@ use Drupal\rep\Utils;
 use Drupal\rep\Entity\Tables;
 use Drupal\rep\Vocabulary\HASCO;
 use Drupal\rep\Vocabulary\REPGUI;
+use Drupal\Core\Ajax\OpenModalDialogCommand;
+
 
 class EditSemanticDataDictionaryForm extends FormBase {
 
@@ -128,6 +130,7 @@ class EditSemanticDataDictionaryForm extends FormBase {
     // SAVE STATE
     $this->setState($state);
 
+    // kint($variables, 'variables');
     // SET SEPARATOR
     $separator = '<div class="w-100"></div>';
 
@@ -528,7 +531,7 @@ class EditSemanticDataDictionaryForm extends FormBase {
       $form_row = [
         'column' => [
           'top' => ['#type'=>'markup', '#markup'=>'<div class="pt-3 col border border-white">'],
-          'main' => ['#type'=>'textfield', '#name'=>"variable_column_$delta", '#value'=>$v['column'],],
+          'main' => ['#type'=>'textfield', '#name'=>"variable_column_$delta", '#default_value'=>$v['column'],],
           'bottom' => ['#type'=>'markup', '#markup'=>'</div>'],
         ],
         'attribute' => [
@@ -540,7 +543,7 @@ class EditSemanticDataDictionaryForm extends FormBase {
             '#type' => 'textfield',
             '#name' => 'variable_attribute_' . $delta,
             '#id' => 'variable_attribute_' . $delta,
-            '#value' => $this->formatDisplay($v['attribute'], $mode),
+            '#default_value' => $this->formatDisplay($v['attribute'], $mode),
             '#attributes' => [
               'class' => ['open-tree-modal'],
               'data-dialog-type' => 'modal',
@@ -566,26 +569,6 @@ class EditSemanticDataDictionaryForm extends FormBase {
             '#markup' => '</div>',
           ],
         ],
-        // 'attribute' => [
-        //   'top' => ['#type'=>'markup', '#markup'=>'<div class="pt-3 col border border-white">'],
-        //   'main' => [
-        //     '#type'=>'textfield',
-        //     '#name'=>"variable_attribute_$delta",
-        //     '#value'=>$this->formatDisplay($v['attribute'], $mode),
-        //     '#attributes'=>[
-        //       'data-original-value'=>$v['attribute'],
-        //       'data-label'=>$v['column'],
-        //       'class'=>['open-tree-modal'],
-        //       'data-dialog-type'=>'modal',
-        //       'data-dialog-options'=>json_encode(['width'=>800]),
-        //       'data-url'=>Url::fromRoute('rep.tree_form',['mode'=>'modal','elementtype'=>'attribute'],['query'=>['field_id'=>"variable_attribute_$delta"]])->toString(),
-        //       'data-field-id'=>"variable_attribute_$delta",
-        //       'data-search-value'=>$v['attribute'],
-        //       'data-elementtype'=>'attribute',
-        //     ],
-        //   ],
-        //   'bottom'=>['#type'=>'markup','#markup'=>'</div>'],
-        // ],
         'is_attribute_of' => [
           'top' => [
             '#type' => 'markup',
@@ -595,7 +578,7 @@ class EditSemanticDataDictionaryForm extends FormBase {
             '#type' => 'textfield',
             '#name' => 'variable_is_attribute_of_' . $delta,
             '#id' => 'variable_is_attribute_of_' . $delta,
-            '#value' => $this->formatDisplay($v['is_attribute_of'], $mode),
+            '#default_value' => $this->formatDisplay($v['is_attribute_of'], $mode),
             '#attributes' => [
               'class' => ['open-tree-modal'],
               'data-dialog-type' => 'modal',
@@ -621,16 +604,6 @@ class EditSemanticDataDictionaryForm extends FormBase {
             '#markup' => '</div>',
           ],
         ],
-        // 'is_attribute_of'=>[
-        //   'top'=>['#type'=>'markup','#markup'=>'<div class="pt-3 col border border-white">'],
-        //   'main'=>[
-        //     '#type'=>'textfield',
-        //     '#name'=>"variable_is_attribute_of_$delta",
-        //     '#value'=>$this->formatDisplay($v['is_attribute_of'], $mode),
-        //     '#attributes'=>['data-original-value'=>$v['is_attribute_of']],
-        //   ],
-        //   'bottom'=>['#type'=>'markup','#markup'=>'</div>'],
-        // ],
         'unit' => [
           'top' => [
             '#type' => 'markup',
@@ -639,58 +612,20 @@ class EditSemanticDataDictionaryForm extends FormBase {
           'main' => [
             '#type' => 'textfield',
             '#name' => 'variable_unit_' . $delta,
-            '#id' => 'variable_unit_' . $delta,
-            '#value' => $this->formatDisplay($v['unit'], $mode),
-            '#attributes' => [
-              'class' => ['open-tree-modal'],
-              'data-dialog-type' => 'modal',
-              'data-dialog-options' => json_encode(['width' => 800]),
-              'data-url' => Url::fromRoute('rep.tree_form', [
-                'mode' => 'modal',
-                'elementtype' => 'unit',
-                'silent' => true,
-                'prefix' => true,
-              ], [
-                'query' => [
-                  'field_id'     => 'variable_unit_' . $delta,
-                  'search_value' => UTILS::plainUri($this->formatDisplay($v['unit'], 'plain:label')),
-                ],
-              ])->toString(),
-              'data-field-id'    => 'variable_unit_' . $delta,
-              'data-search-value'=> $v['unit'],
-              'data-elementtype' => 'unit',
-            ],
+            '#default_value' => $v['unit'],
+            '#autocomplete_route_name' => 'sem.semanticvariable_unit_autocomplete',
           ],
           'bottom' => [
             '#type' => 'markup',
             '#markup' => '</div>',
           ],
         ],
-        // 'unit'=>[
-        //   'top'=>['#type'=>'markup','#markup'=>'<div class="pt-3 col border border-white">'],
-        //   'main'=>[
-        //     '#type'=>'textfield',
-        //     '#name'=>"variable_unit_$delta",
-        //     '#value'=>$this->formatDisplay($v['unit'], $mode),
-        //     '#attributes'=>[
-        //       'data-original-value'=>$v['unit'],
-        //       'class'=>['open-tree-modal'],
-        //       'data-dialog-type'=>'modal',
-        //       'data-dialog-options'=>json_encode(['width'=>800]),
-        //       'data-url'=>Url::fromRoute('rep.tree_form',['mode'=>'modal','elementtype'=>'unit'],['query'=>['field_id'=>"variable_unit_$delta"]])->toString(),
-        //       'data-field-id'=>"variable_unit_$delta",
-        //       'data-search-value'=>$v['unit'],
-        //       'data-elementtype'=>'unit',
-        //     ],
-        //   ],
-        //   'bottom'=>['#type'=>'markup','#markup'=>'</div>'],
-        // ],
         'time'=>[
           'top'=>['#type'=>'markup','#markup'=>'<div class="pt-3 col border border-white">'],
           'main'=>[
             '#type'=>'textfield',
             '#name'=>"variable_time_$delta",
-            '#value'=>$this->formatDisplay($v['time'], $v['column'], $mode),
+            '#default_value' => $this->formatDisplay($v['time'], $mode),
             '#attributes'=>['data-original-value'=>$v['time']],
           ],
           'bottom'=>['#type'=>'markup','#markup'=>'</div>'],
@@ -704,7 +639,7 @@ class EditSemanticDataDictionaryForm extends FormBase {
             '#type' => 'textfield',
             '#name' => 'variable_in_relation_to_' . $delta,
             '#id' => 'variable_in_relation_to_' . $delta,
-            '#value' => $this->formatDisplay($v['in_relation_to'], $mode),
+            '#default_value' => $this->formatDisplay($v['in_relation_to'], $mode),
             '#attributes' => [
               'class' => ['open-tree-modal'],
               'data-dialog-type' => 'modal',
@@ -730,16 +665,6 @@ class EditSemanticDataDictionaryForm extends FormBase {
             '#markup' => '</div>',
           ],
         ],
-        // 'in_relation_to'=>[
-        //   'top'=>['#type'=>'markup','#markup'=>'<div class="pt-3 col border border-white">'],
-        //   'main'=>[
-        //     '#type'=>'textfield',
-        //     '#name'=>"variable_in_relation_to_$delta",
-        //     '#value'=>$this->formatDisplay($v['in_relation_to'], $mode),
-        //     '#attributes'=>['data-original-value'=>$v['in_relation_to']],
-        //   ],
-        //   'bottom'=>['#type'=>'markup','#markup'=>'</div>'],
-        // ],
         'was_derived_from' => [
           'top' => [
             '#type' => 'markup',
@@ -749,7 +674,7 @@ class EditSemanticDataDictionaryForm extends FormBase {
             '#type' => 'textfield',
             '#name' => 'variable_was_derived_from_' . $delta,
             '#id' => 'variable_was_derived_from_' . $delta,
-            '#value' => $this->formatDisplay($v['was_derived_from'], $mode),
+            '#default_value' => $this->formatDisplay($v['was_derived_from'], $mode),
             '#attributes' => [
               'class' => ['open-tree-modal'],
               'data-dialog-type' => 'modal',
@@ -775,16 +700,6 @@ class EditSemanticDataDictionaryForm extends FormBase {
             '#markup' => '</div>',
           ],
         ],
-        // 'was_derived_from'=>[
-        //   'top'=>['#type'=>'markup','#markup'=>'<div class="pt-3 col border border-white">'],
-        //   'main'=>[
-        //     '#type'=>'textfield',
-        //     '#name'=>"variable_was_derived_from_$delta",
-        //     '#value'=>$this->formatDisplay($v['was_derived_from'], $mode),
-        //     '#attributes'=>['data-original-value'=>$v['was_derived_from']],
-        //   ],
-        //   'bottom'=>['#type'=>'markup','#markup'=>'</div>'],
-        // ],
         'operations'=>[
           'top'=>['#type'=>'markup','#markup'=>'<div class="pt-3 col-md-1 border border-white">'],
           'main'=>[
@@ -1010,7 +925,7 @@ class EditSemanticDataDictionaryForm extends FormBase {
             '#type' => 'textfield',
             '#name' => 'object_entity_' . $delta,
             '#id' => 'object_entity_' . $delta,
-            '#value' => $this->formatDisplay($o['entity'], $mode),
+            '#default_value' => $this->formatDisplay($o['entity'], $mode),
             '#attributes' => [
               'class' => ['open-tree-modal'],
               'data-dialog-type' => 'modal',
@@ -1036,26 +951,6 @@ class EditSemanticDataDictionaryForm extends FormBase {
             '#markup' => '</div>',
           ],
         ],
-        // 'entity' => [
-        //   'top'    => ['#type'=>'markup', '#markup'=>'<div class="pt-3 col border border-white">'],
-        //   'main'   => [
-        //     '#type' => 'textfield',
-        //     '#name'  => "object_entity_$delta",
-        //     '#value' => $display_entity,
-        //     '#attributes' => [
-        //       'data-original-value' => $o['entity'],
-        //       'data-label'          => $o['column'],
-        //       'class'               => ['open-tree-modal'],
-        //       'data-dialog-type'    => 'modal',
-        //       'data-dialog-options' => json_encode(['width' => 800]),
-        //       'data-url'            => Url::fromRoute('rep.tree_form', [
-        //                                 'mode'        => 'modal',
-        //                                 'elementtype' => 'entity',
-        //                               ], ['query' => ['field_id' => "object_entity_$delta"]])->toString(),
-        //     ],
-        //   ],
-        //   'bottom' => ['#type'=>'markup', '#markup'=>'</div>'],
-        // ],
         'role' => [
           'top' => [
             '#type' => 'markup',
@@ -1065,14 +960,14 @@ class EditSemanticDataDictionaryForm extends FormBase {
             '#type' => 'textfield',
             '#name' => 'object_role_' . $delta,
             '#id' => 'object_role_' . $delta,
-            '#value' => $this->formatDisplay($o['role'], $mode),
+            '#default_value' => $this->formatDisplay($o['role'], $mode),
             '#attributes' => [
               'class' => ['open-tree-modal'],
               'data-dialog-type' => 'modal',
               'data-dialog-options' => json_encode(['width' => 800]),
               'data-url' => Url::fromRoute('rep.tree_form', [
                 'mode' => 'modal',
-                'elementtype' => 'role',
+                'elementtype' => 'person',
                 'silent' => true,
                 'prefix' => true,
               ], [
@@ -1083,7 +978,7 @@ class EditSemanticDataDictionaryForm extends FormBase {
               ])->toString(),
               'data-field-id'    => 'object_role_' . $delta,
               'data-search-value'=> $o['role'],
-              'data-elementtype' => 'role',
+              'data-elementtype' => 'person',
             ],
           ],
           'bottom' => [
@@ -1091,16 +986,6 @@ class EditSemanticDataDictionaryForm extends FormBase {
             '#markup' => '</div>',
           ],
         ],
-        // 'role' => [
-        //   'top'    => ['#type'=>'markup', '#markup'=>'<div class="pt-3 col border border-white">'],
-        //   'main'   => [
-        //     '#type'=>'textfield',
-        //     '#name'  => "object_role_$delta",
-        //     '#value' => $this->formatDisplay($o['role'], $mode),
-        //     '#attributes' => ['data-original-value' => $o['role']],
-        //   ],
-        //   'bottom' => ['#type'=>'markup', '#markup'=>'</div>'],
-        // ],
         'relation' => [
           'top' => [
             '#type' => 'markup',
@@ -1110,7 +995,7 @@ class EditSemanticDataDictionaryForm extends FormBase {
             '#type' => 'textfield',
             '#name' => 'object_relation_' . $delta,
             '#id' => 'object_relation_' . $delta,
-            '#value' => $this->formatDisplay($o['relation'], $mode),
+            '#default_value' => $this->formatDisplay($o['relation'], $mode),
             '#attributes' => [
               'class' => ['open-tree-modal'],
               'data-dialog-type' => 'modal',
@@ -1136,16 +1021,6 @@ class EditSemanticDataDictionaryForm extends FormBase {
             '#markup' => '</div>',
           ],
         ],
-        // 'relation' => [
-        //   'top'    => ['#type'=>'markup', '#markup'=>'<div class="pt-3 col border border-white">'],
-        //   'main'   => [
-        //     '#type'=>'textfield',
-        //     '#name'  => "object_relation_$delta",
-        //     '#value' => $this->formatDisplay($o['relation'], $mode),
-        //     '#attributes' => ['data-original-value' => $o['relation']],
-        //   ],
-        //   'bottom' => ['#type'=>'markup', '#markup'=>'</div>'],
-        // ],
         'in_relation_to' => [
           'top' => [
             '#type' => 'markup',
@@ -1155,7 +1030,7 @@ class EditSemanticDataDictionaryForm extends FormBase {
             '#type' => 'textfield',
             '#name' => 'object_in_relation_to_' . $delta,
             '#id' => 'object_in_relation_to_' . $delta,
-            '#value' => $this->formatDisplay($o['in_relation_to'], $mode),
+            '#default_value' => $this->formatDisplay($o['in_relation_to'], $mode),
             '#attributes' => [
               'class' => ['open-tree-modal'],
               'data-dialog-type' => 'modal',
@@ -1181,16 +1056,6 @@ class EditSemanticDataDictionaryForm extends FormBase {
             '#markup' => '</div>',
           ],
         ],
-        // 'in_relation_to' => [
-        //   'top'    => ['#type'=>'markup', '#markup'=>'<div class="pt-3 col border border-white">'],
-        //   'main'   => [
-        //     '#type'=>'textfield',
-        //     '#name'  => "object_in_relation_to_$delta",
-        //     '#value' => $this->formatDisplay($o['in_relation_to'], $mode),
-        //     '#attributes' => ['data-original-value' => $o['in_relation_to']],
-        //   ],
-        //   'bottom' => ['#type'=>'markup', '#markup'=>'</div>'],
-        // ],
         'was_derived_from' => [
           'top' => [
             '#type' => 'markup',
@@ -1200,7 +1065,7 @@ class EditSemanticDataDictionaryForm extends FormBase {
             '#type' => 'textfield',
             '#name' => 'object_was_derived_from_' . $delta,
             '#id' => 'object_was_derived_from_' . $delta,
-            '#value' => $this->formatDisplay($o['was_derived_from'], $mode),
+            '#default_value' => $this->formatDisplay($o['was_derived_from'], $mode),
             '#attributes' => [
               'class' => ['open-tree-modal'],
               'data-dialog-type' => 'modal',
@@ -1226,16 +1091,6 @@ class EditSemanticDataDictionaryForm extends FormBase {
             '#markup' => '</div>',
           ],
         ],
-        // 'was_derived_from' => [
-        //   'top'    => ['#type'=>'markup', '#markup'=>'<div class="pt-3 col border border-white">'],
-        //   'main'   => [
-        //     '#type'=>'textfield',
-        //     '#name'  => "object_was_derived_from_$delta",
-        //     '#value' => $this->formatDisplay($o['was_derived_from'], $mode),
-        //     '#attributes' => ['data-original-value' => $o['was_derived_from']],
-        //   ],
-        //   'bottom' => ['#type'=>'markup', '#markup'=>'</div>'],
-        // ],
         'operations' => [
           'top'    => ['#type'=>'markup', '#markup'=>'<div class="pt-3 col-md-1 border border-white">'],
           'main'   => [
@@ -1826,28 +1681,35 @@ class EditSemanticDataDictionaryForm extends FormBase {
    * @return string
    *   The string to display in the textfield.
    */
-  protected function formatDisplay(string $uri, string $mode = 'prefix:uri'): string {
+  protected function formatDisplay(?string $uri, string $mode = 'prefix:uri'): string {
+    // Guard clauses for null and empty
+    if ($uri === null || $uri === '') {
+      return '';
+    }
+    // Keep placeholders (e.g., "??") visible to the user
+    if (str_starts_with($uri, '??')) {
+      return $uri;
+    }
 
-    if (empty($uri) || substr($uri, 0, 2) === "??") return '';
-
-    // GET VALUES
+    // Normalize full URI and resolve metadata
     $full_uri = Utils::plainUri($uri);
     $api = \Drupal::service('rep.api_connector');
-    $values = $api->parseObjectResponse($api->getUri($full_uri),'getUri');
+    $values = $api->parseObjectResponse($api->getUri($full_uri), 'getUri');
 
     if (!empty($values)) {
       switch ($mode) {
         case 'label':
-          return $values->label;
+          return $values->label ?? '';
         case 'prefix:label':
-          return $values->uriNamespace;
+          return $values->uriNamespace ?? '';
         case 'prefix:uri':
         default:
           return $uri;
       }
-    } else {
-      return $uri;
     }
+    return $uri;
   }
+
+
 
 }
